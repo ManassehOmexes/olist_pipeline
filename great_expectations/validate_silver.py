@@ -1,7 +1,7 @@
 """
-Great Expectations — Silver Layer Validation
-Läuft nach Glue (Bronze→Silver), vor dbt (Silver→Gold).
-Prüft Datenqualität der Parquet-Dateien auf S3.
+Great Expectations - Silver Layer Validation
+Laeuft nach Glue (Bronze -> Silver), vor dbt (Silver -> Gold).
+Prueft Datenqualitaet der Parquet-Dateien auf S3.
 """
 
 import io
@@ -21,7 +21,7 @@ from great_expectations.expectations import (
     ExpectTableRowCountToBeBetween,
 )
 
-# ── Logging ──────────────────────────────────────────────────────────────────
+# Logging
 
 logging.basicConfig(
     level=logging.INFO,
@@ -30,7 +30,7 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ── Konfiguration ────────────────────────────────────────────────────────────
+# Konfiguration
 
 BUCKET = os.environ["S3_BUCKET"]
 REGION = os.environ["AWS_DEFAULT_REGION"]
@@ -44,7 +44,7 @@ SILVER_TABLES = {
 }
 
 
-# ── S3 Hilfsfunktion ─────────────────────────────────────────────────────────
+# S3
 
 def load_parquet_from_s3(bucket: str, key: str) -> pd.DataFrame:
     """Liest eine Parquet-Datei von S3 in einen Pandas DataFrame."""
@@ -58,7 +58,7 @@ def load_parquet_from_s3(bucket: str, key: str) -> pd.DataFrame:
     return pd.read_parquet(io.BytesIO(response["Body"].read()))
 
 
-# ── Expectation Suites ───────────────────────────────────────────────────────
+# Expectation Suites
 
 def suite_orders() -> ExpectationSuite:
     suite = ExpectationSuite(name="orders_suite")
@@ -117,10 +117,10 @@ SUITES = {
 }
 
 
-# ── Validierung ──────────────────────────────────────────────────────────────
+# Validierung
 
 def validate_table(context, table_name: str, s3_key: str) -> bool:
-    """Lädt eine Tabelle von S3 und validiert sie gegen die Expectation Suite."""
+    """Laedt eine Tabelle von S3 und validiert sie gegen die Expectation Suite."""
     log.info("Validiere: %s", table_name)
 
     try:
@@ -151,7 +151,7 @@ def validate_table(context, table_name: str, s3_key: str) -> bool:
         log.warning("  FAIL: %d/%d Expectations fehlgeschlagen", failed, total)
         for r in result.results:
             if not r.success:
-                log.warning("    ✗ %s — %s", r.expectation_config.type, r.result)
+                log.warning("    FAIL: %s - %s", r.expectation_config.type, r.result)
 
     return result.success
 
@@ -171,10 +171,10 @@ def main() -> None:
             all_passed = False
 
     if all_passed:
-        log.info("SILVER VALIDATION: ALLE CHECKS BESTANDEN — dbt kann starten.")
+        log.info("SILVER VALIDATION: alle Checks bestanden. dbt kann starten.")
         sys.exit(0)
     else:
-        log.error("SILVER VALIDATION: FEHLER GEFUNDEN — dbt wird NICHT gestartet.")
+        log.error("SILVER VALIDATION: Fehler gefunden. dbt wird nicht gestartet.")
         sys.exit(1)
 
 

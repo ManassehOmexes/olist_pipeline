@@ -1,8 +1,8 @@
 """
-Pipeline Runner: Silver Validation → dbt run → dbt test
+Pipeline Runner: Silver Validation -> dbt run -> dbt test
 Reihenfolge:
-  1. Great Expectations prüft Silver-Daten auf S3
-  2. Nur wenn alles grün: dbt run + dbt test
+  1. Great Expectations prueft Silver-Daten auf S3
+  2. Nur wenn alles erfolgreich: dbt run + dbt test
 """
 
 import logging
@@ -10,7 +10,7 @@ import os
 import subprocess
 import sys
 
-# ── Logging ──────────────────────────────────────────────────────────────────
+# Logging
 
 logging.basicConfig(
     level=logging.INFO,
@@ -19,11 +19,12 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-# ── Hilfsfunktion ────────────────────────────────────────────────────────────
+
+# Hilfsfunktion
 
 def run(cmd: list[str], cwd: str | None = None) -> int:
-    """Führt einen Shell-Befehl aus und gibt den Exit-Code zurück."""
-    log.info("▶ %s", " ".join(cmd))
+    """Fuehrt einen Shell-Befehl aus und gibt den Exit-Code zurueck."""
+    log.info("Starte: %s", " ".join(cmd))
     try:
         result = subprocess.run(cmd, cwd=cwd)
         return result.returncode
@@ -31,46 +32,38 @@ def run(cmd: list[str], cwd: str | None = None) -> int:
         log.error("Befehl nicht gefunden: %s", e)
         return 1
     except Exception as e:
-        log.error("Unerwarteter Fehler beim Ausführen von '%s': %s", " ".join(cmd), e)
+        log.error("Fehler beim Ausfuehren von '%s': %s", " ".join(cmd), e)
         return 1
 
 
-# ── Pipeline ─────────────────────────────────────────────────────────────────
+# Pipeline
 
 def main() -> None:
     root = os.path.dirname(os.path.abspath(__file__))
     dbt_dir = os.path.join(root, "dbt")
 
     # Schritt 1: Silver Validation
-    log.info("=" * 60)
-    log.info("SCHRITT 1: Great Expectations — Silver Validation")
-    log.info("=" * 60)
+    log.info("Schritt 1: Great Expectations - Silver Validation")
     code = run([sys.executable, "great_expectations/validate_silver.py"], cwd=root)
     if code != 0:
-        log.error("Pipeline abgebrochen — Datenqualität nicht erfüllt.")
+        log.error("Pipeline abgebrochen: Datenqualitaet nicht erfuellt.")
         sys.exit(1)
 
     # Schritt 2: dbt run
-    log.info("=" * 60)
-    log.info("SCHRITT 2: dbt run")
-    log.info("=" * 60)
+    log.info("Schritt 2: dbt run")
     code = run(["dbt", "run", "--no-partial-parse"], cwd=dbt_dir)
     if code != 0:
-        log.error("Pipeline abgebrochen — dbt run fehlgeschlagen.")
+        log.error("Pipeline abgebrochen: dbt run fehlgeschlagen.")
         sys.exit(1)
 
     # Schritt 3: dbt test
-    log.info("=" * 60)
-    log.info("SCHRITT 3: dbt test")
-    log.info("=" * 60)
+    log.info("Schritt 3: dbt test")
     code = run(["dbt", "test", "--no-partial-parse"], cwd=dbt_dir)
     if code != 0:
-        log.error("Pipeline abgebrochen — dbt test fehlgeschlagen.")
+        log.error("Pipeline abgebrochen: dbt test fehlgeschlagen.")
         sys.exit(1)
 
-    log.info("=" * 60)
-    log.info("PIPELINE ERFOLGREICH ABGESCHLOSSEN.")
-    log.info("=" * 60)
+    log.info("Pipeline erfolgreich abgeschlossen.")
     sys.exit(0)
 
 
