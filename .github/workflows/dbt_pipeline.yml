@@ -1,0 +1,59 @@
+name: dbt Pipeline
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  run_pipeline:
+    name: Silver Validation + dbt run + dbt test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Abhaengigkeiten installieren
+        run: |
+          pip install --upgrade pip
+          pip install dbt-duckdb great-expectations boto3 pandas pyarrow
+
+      - name: dbt Pakete installieren
+        working-directory: dbt
+        run: dbt deps
+
+      - name: dbt Profil einrichten
+        run: |
+          mkdir -p ~/.dbt
+          cat <<EOF > ~/.dbt/profiles.yml
+          olist_dbt:
+            outputs:
+              dev:
+                type: duckdb
+                path: "{{ env_var('DBT_DB_PATH', '/tmp/dev.duckdb') }}"
+                threads: 4
+                extensions:
+                  - httpfs
+                settings:
+                  s3_region: ${{ secrets.AWS_DEFAULT_REGION }}
+                  s3_access_key_id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+                  s3_secret_access_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+            target: dev
+          EOF
+
+      - name: Pipeline ausfuehren
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+        run: python run_pipeline.py
