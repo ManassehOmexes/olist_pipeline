@@ -1,0 +1,19 @@
+WITH source AS (
+    SELECT
+        *
+    FROM
+        read_parquet(
+            's3://olist-data-lake-dev/silver/olist_orders_dataset/olist_orders_dataset.parquet'
+        )
+)
+SELECT
+    order_id,
+    customer_id,
+    order_status,
+    order_purchase_timestamp,
+    order_approved_at,
+    order_delivered_carrier_date,
+    order_delivered_customer_date,
+    order_estimated_delivery_date
+FROM
+    source

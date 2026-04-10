@@ -1,0 +1,45 @@
+version: 2
+
+models:
+  - name: fct_sales
+    description: "Umsatz und Bestellvolumen je Produktkategorie (BQ-01)"
+    columns:
+      - name: category
+        tests:
+          - not_null
+      - name: total_revenue
+        tests:
+          - not_null
+
+  - name: fct_regional_performance
+    description: "Umsatz und Bewertungen je Bundesstaat (BQ-02)"
+    columns:
+      - name: state
+        tests:
+          - not_null
+          - unique
+      - name: total_revenue
+        tests:
+          - not_null
+
+  - name: fct_delivery
+    description: "Ø Lieferdauer und Verspätungsrate je Bundesstaat (BQ-03)"
+    columns:
+      - name: state
+        tests:
+          - not_null
+          - unique
+      - name: avg_delivery_days
+        tests:
+          - not_null
+      - name: late_rate_pct
+        tests:
+          - not_null
+
+  - name: fct_reviews
+    description: "Bewertungsscores mit Lieferdauer-Korrelation (BQ-04)"
+    columns:
+      - name: review_score
+        tests:
+          - not_null
+          - unique

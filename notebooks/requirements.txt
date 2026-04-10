@@ -1,0 +1,15 @@
+# EDA & Datenanalyse
+pandas==2.2.2
+numpy==1.26.4
+matplotlib==3.8.4
+seaborn==0.13.2
+missingno==0.5.2
+
+# Jupyter (VS Code Notebooks)
+ipykernel==6.29.4
+ipywidgets==8.1.2
+
+# Später gebraucht (Pipeline)
+boto3==1.34.101
+great-expectations==0.18.15
+python-dotenv==1.0.1

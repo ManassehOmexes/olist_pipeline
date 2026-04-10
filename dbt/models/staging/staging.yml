@@ -1,0 +1,90 @@
+version: 2
+
+models:
+  - name: stg_orders
+    description: "Bereinigte Bestellungen aus dem Silver Layer"
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        tests:
+          - not_null
+      - name: order_status
+        tests:
+          - not_null
+
+  - name: stg_customers
+    description: "Kunden mit PLZ und Bundesstaat"
+    columns:
+      - name: customer_id
+        tests:
+          - not_null
+          - unique
+      - name: customer_zip_code_prefix
+        tests:
+          - not_null
+
+  - name: stg_order_items
+    description: "Einzelne Bestellpositionen mit Preis und Versandkosten"
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: product_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_products')
+                field: product_id
+      - name: seller_id
+        tests:
+          - not_null
+
+  - name: stg_products
+    description: "Produkte mit Kategorie (inkl. englischer Übersetzung)"
+    columns:
+      - name: product_id
+        tests:
+          - not_null
+          - unique
+
+  - name: stg_sellers
+    description: "Verkäufer mit PLZ und Bundesstaat"
+    columns:
+      - name: seller_id
+        tests:
+          - not_null
+          - unique
+
+  - name: stg_order_reviews
+    description: "Kundenbewertungen je Bestellung"
+    columns:
+      - name: review_id
+        tests:
+          - not_null
+          - unique
+      - name: order_id
+        tests:
+          - not_null
+
+  - name: stg_order_payments
+    description: "Zahlungsdaten je Bestellung"
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+
+  - name: stg_geolocation
+    description: "PLZ → Koordinaten (auf Median aggregiert)"
+    columns:
+      - name: zip_code_prefix
+        tests:
+          - not_null
+          - unique

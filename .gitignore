@@ -1,0 +1,39 @@
+# Secrets
+.env
+*.pem
+*.key
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Jupyter
+.ipynb_checkpoints/
+notebooks/venv/
+
+# dbt
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+terraform.tfvars
+
+# Great Expectations
+great_expectations/uncommitted/
+
+# Airflow
+airflow/logs/
+
+# Data (Rohdaten nicht ins Repo)
+data/
+
+# OS
+.DS_Store
+Thumbs.db

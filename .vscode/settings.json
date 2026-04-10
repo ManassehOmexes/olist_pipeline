@@ -1,0 +1,19 @@
+{
+    "sqltools.useNodeRuntime": true,
+    "workbench.editorAssociations": {
+        "*.copilotmd": "vscode.markdown.preview.editor",
+        "*.parquet": "duckdb.dataFileViewer",
+        "*.csv": "duckdb.dataFileViewer",
+        "*.tsv": "duckdb.dataFileViewer",
+        "*.xlsx": "duckdb.dataFileViewer"
+    },
+    "duckdb.defaultDatabase": "dev",
+    "duckdb.databases": [
+        {
+            "alias": "dev",
+            "type": "file",
+            "path": "c:\\Users\\User\\Documents\\Projekte\\E-Comm\\ecomm_pipeline\\dbt\\dev.duckdb",
+            "attached": false
+        }
+    ]
+}

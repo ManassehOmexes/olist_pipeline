@@ -1,0 +1,66 @@
+# =============================================================
+# .claudeignore — olist-analytics-pipeline
+# Dateien, die Claude Code nicht lesen/indexieren soll
+# =============================================================
+
+# --- Credentials & Secrets ---
+.env
+.env.*
+*.pem
+*.key
+*.p12
+credentials/
+secrets/
+
+# --- Rohdaten (groß, nicht analyse-relevant für Code-Kontext) ---
+data/raw/
+data/
+
+# --- Python-Umgebung ---
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.pytest_cache/
+
+# --- dbt Artefakte (generiert, nicht handgeschrieben) ---
+dbt/target/
+dbt/logs/
+dbt/dbt_packages/
+
+# --- Jupyter Checkpoints ---
+.ipynb_checkpoints/
+
+# --- Terraform State & Cache ---
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfstate.lock.info
+.terraformrc
+
+# --- Great Expectations Artefakte ---
+great_expectations/uncommitted/
+great_expectations/checkpoints/
+
+# --- Logs & temporäre Dateien ---
+logs/
+*.log
+*.tmp
+*.bak
+
+# --- Node / Frontend (nicht Teil des Stacks) ---
+node_modules/
+
+# --- OS-Dateien ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- IDE ---
+.idea/
+.vscode/
+*.swp

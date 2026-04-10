@@ -1,0 +1,34 @@
+version: 2
+
+models:
+  - name: int_orders_enriched
+    description: "Bestellungen angereichert mit Kundendaten (State, PLZ)"
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+          - unique
+      - name: customer_id
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+      - name: customer_state
+        tests:
+          - not_null
+
+  - name: int_delivery_times
+    description: "Lieferdauer und Verspätungsstatus je Bestellung"
+    columns:
+      - name: order_id
+        tests:
+          - not_null
+          - unique
+      - name: delivery_days
+        tests:
+          - not_null
+      - name: is_late
+        tests:
+          - not_null
