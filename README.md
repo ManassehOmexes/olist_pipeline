@@ -37,7 +37,7 @@ flowchart LR
 |---|----------|-----|
 | BQ-01 | Which product categories generate the most revenue? | Revenue per category |
 | BQ-02 | Which regions perform best? | Revenue per state |
-| BQ-03 | How long does delivery take — where are the delays? | Avg. delivery days, late rate % |
+| BQ-03 | How long does delivery take - where are the delays? | Avg. delivery days, late rate % |
 | BQ-04 | How satisfied are customers and what influences reviews? | Avg. review score, correlation delay/rating |
 
 ## Project Structure
@@ -147,6 +147,6 @@ erDiagram
 
 ## Dataset
 
-[Olist Brazilian E-Commerce Dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) — Kaggle, CC BY-NC-SA 4.0
+[Olist Brazilian E-Commerce Dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) - Kaggle, CC BY-NC-SA 4.0
 
 ~100,000 orders from 2016 to 2018 across multiple Brazilian marketplaces.
