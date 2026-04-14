@@ -31,7 +31,7 @@ great_expectations/uncommitted/
 # Airflow
 airflow/logs/
 
-# Data (Rohdaten nicht ins Repo)
+# Data
 data/
 
 # Claude
