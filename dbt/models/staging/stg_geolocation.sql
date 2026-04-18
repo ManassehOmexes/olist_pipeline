@@ -1,8 +1,6 @@
 -- Mehrfacheinträge pro PLZ auf Median-Koordinate aggregieren (EDA Befund)
 WITH source AS (
-    SELECT * FROM read_parquet(
-        's3://olist-data-lake-dev/silver/olist_geolocation_dataset/olist_geolocation_dataset.parquet'
-    )
+    SELECT * FROM {{ silver_source('olist_geolocation_dataset') }}
 )
 
 SELECT

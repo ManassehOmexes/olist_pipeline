@@ -16,8 +16,13 @@ variable "environment" {
   default     = "dev"
 }
 
+variable "alert_email" {
+  description = "Email-Adresse fuer Pipeline-Failure-Alarme"
+  type        = string
+}
+
 variable "redshift_admin_password" {
-  description = "Admin Passwort für Redshift Serverless — aus .env laden"
+  description = "Admin Passwort für Redshift Serverless - aus .env laden"
   type        = string
   sensitive   = true
 }

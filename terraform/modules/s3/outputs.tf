@@ -4,6 +4,6 @@ output "bucket_id" {
 }
 
 output "bucket_arn" {
-  description = "ARN des S3 Buckets - wird für IAM Policies benötigt"
+  description = "ARN des S3 Buckets - wird fuer IAM Policies benoetigt"
   value       = aws_s3_bucket.data_lake.arn
 }

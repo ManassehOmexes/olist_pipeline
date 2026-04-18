@@ -145,21 +145,34 @@ resource "aws_iam_role" "redshift" {
   tags               = var.common_tags
 }
 
-# Redshift darf nur den Gold Layer lesen — Least Privilege Prinzip
+# Redshift Spectrum: S3 Silver lesen + Glue Catalog Zugriff
 data "aws_iam_policy_document" "redshift_s3" {
   statement {
-    sid     = "S3ReadGold"
+    sid     = "S3ReadSilver"
     actions = ["s3:GetObject", "s3:ListBucket"]
     resources = [
       var.bucket_arn,
-      "${var.bucket_arn}/gold/*"
+      "${var.bucket_arn}/silver/*"
     ]
+  }
+
+  statement {
+    sid = "GlueCatalogRead"
+    actions = [
+      "glue:GetDatabase",
+      "glue:GetDatabases",
+      "glue:GetTable",
+      "glue:GetTables",
+      "glue:GetPartition",
+      "glue:GetPartitions",
+    ]
+    resources = ["*"]
   }
 }
 
 resource "aws_iam_policy" "redshift_s3" {
   name        = "${var.project}-redshift-s3-policy-${var.environment}"
-  description = "Erlaubt Redshift den Gold Layer aus S3 zu lesen"
+  description = "Erlaubt Redshift Spectrum den Silver Layer und Glue Catalog zu lesen"
   policy      = data.aws_iam_policy_document.redshift_s3.json
   tags        = var.common_tags
 }

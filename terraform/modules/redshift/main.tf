@@ -3,6 +3,30 @@
 # Namespace (Datenbank) + Workgroup (Compute/Netzwerk)
 # -------------------------------------------------------
 
+# Security Group: öffnet Port 5439 für eingehende Verbindungen
+# Notwendig damit dbt (lokal) und Power BI (ODBC) verbinden können
+resource "aws_security_group" "redshift" {
+  name        = "${var.project}-redshift-sg-${var.environment}"
+  description = "Erlaubt eingehende Verbindungen auf Redshift Port 5439"
+
+  ingress {
+    from_port   = 5439
+    to_port     = 5439
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "Redshift Serverless - dbt + Power BI Zugriff"
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = var.common_tags
+}
+
 # Namespace: enthält die Datenbank, User und Schemas
 resource "aws_redshiftserverless_namespace" "main" {
   namespace_name      = "${var.project}-namespace-${var.environment}"
@@ -26,6 +50,8 @@ resource "aws_redshiftserverless_workgroup" "main" {
 
   # Publicly accessible = true damit Power BI per ODBC verbinden kann
   publicly_accessible = true
+
+  security_group_ids = [aws_security_group.redshift.id]
 
   tags = var.common_tags
 }

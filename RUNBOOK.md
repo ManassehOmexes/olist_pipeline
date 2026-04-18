@@ -1,4 +1,4 @@
-# Runbook — Olist Analytics Pipeline
+# Runbook - Olist Analytics Pipeline
 
 This runbook describes how to diagnose and resolve common pipeline failures.
 
@@ -77,7 +77,7 @@ aws glue start-job-run --job-name bronze_to_silver
 python great_expectations/validate_silver.py
 ```
 
-Read the log output — it shows exactly which table, which column, and which expectation failed.
+Read the log output - it shows exactly which table, which column, and which expectation failed.
 
 **Common causes and fixes:**
 

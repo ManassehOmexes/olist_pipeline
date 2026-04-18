@@ -1,7 +1,5 @@
 WITH source AS (
-    SELECT * FROM read_parquet(
-        's3://olist-data-lake-dev/silver/olist_order_items_dataset/olist_order_items_dataset.parquet'
-    )
+    SELECT * FROM {{ silver_source('olist_order_items_dataset') }}
 )
 
 SELECT

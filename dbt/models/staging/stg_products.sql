@@ -1,13 +1,9 @@
 WITH source AS (
-    SELECT * FROM read_parquet(
-        's3://olist-data-lake-dev/silver/olist_products_dataset/olist_products_dataset.parquet'
-    )
+    SELECT * FROM {{ silver_source('olist_products_dataset') }}
 ),
 
 translation AS (
-    SELECT * FROM read_parquet(
-        's3://olist-data-lake-dev/silver/product_category_name_translation/product_category_name_translation.parquet'
-    )
+    SELECT * FROM {{ silver_source('product_category_name_translation') }}
 )
 
 SELECT

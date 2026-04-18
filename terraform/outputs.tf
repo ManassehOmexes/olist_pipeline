@@ -24,7 +24,7 @@ output "redshift_role_arn" {
 }
 
 output "redshift_endpoint" {
-  description = "Redshift Endpoint für ODBC Verbindung"
+  description = "Redshift Endpoint fuer ODBC Verbindung"
   value       = module.redshift.workgroup_endpoint
 }
 

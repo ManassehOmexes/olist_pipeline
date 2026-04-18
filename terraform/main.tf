@@ -51,6 +51,17 @@ module "glue" {
   bucket_id     = module.s3.bucket_id
 }
 
+# --- Monitoring Modul ---
+module "monitoring" {
+  source = "./modules/monitoring"
+
+  project       = var.project
+  environment   = var.environment
+  common_tags   = var.common_tags
+  alert_email   = var.alert_email
+  glue_job_name = module.glue.job_name
+}
+
 # --- Redshift Serverless Modul ---
 module "redshift" {
   source = "./modules/redshift"
