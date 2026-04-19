@@ -1,0 +1,24 @@
+version: 2
+
+exposures:
+  - name: power_bi_dashboard
+    type: dashboard
+    maturity: high
+    description: >
+      Power BI Dashboard mit 4 Seiten zu den Business Questions.
+      Datenquelle: Gold Layer Mart-Tabellen, exportiert als CSV via scripts/export_to_csv.py.
+
+    depends_on:
+      - ref('fct_sales')
+      - ref('fct_regional_performance')
+      - ref('fct_delivery')
+      - ref('fct_reviews')
+
+    owner:
+      name: Manasseh Amoah
+      email: manasseh.amoah019@gmail.com
+
+    config:
+      tags:
+        - power_bi
+        - gold
