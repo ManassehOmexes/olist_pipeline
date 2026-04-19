@@ -1,3 +1,5 @@
+{{ config(dist='all', sort='total_revenue') }}
+
 WITH order_items AS (
     SELECT * FROM {{ ref('stg_order_items') }}
 ),

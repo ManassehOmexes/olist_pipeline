@@ -1,3 +1,5 @@
+{{ config(dist='all', sort='avg_delivery_days') }}
+
 WITH delivery AS (
     SELECT * FROM {{ ref('int_delivery_times') }}
 )

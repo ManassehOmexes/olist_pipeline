@@ -1,3 +1,5 @@
+{{ config(dist='all', sort='total_revenue') }}
+
 WITH orders AS (
     SELECT * FROM {{ ref('int_orders_enriched') }}
 ),

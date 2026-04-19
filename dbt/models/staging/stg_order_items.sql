@@ -1,3 +1,5 @@
+{{ config(dist='order_id', sort='shipping_limit_date') }}
+
 WITH source AS (
     SELECT * FROM {{ silver_source('olist_order_items_dataset') }}
 )

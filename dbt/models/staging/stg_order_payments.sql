@@ -1,3 +1,5 @@
+{{ config(dist='order_id') }}
+
 WITH source AS (
     SELECT * FROM {{ silver_source('olist_order_payments_dataset') }}
 )

@@ -1,3 +1,5 @@
+{{ config(dist='customer_id') }}
+
 WITH source AS (
     SELECT * FROM {{ silver_source('olist_customers_dataset') }}
 )

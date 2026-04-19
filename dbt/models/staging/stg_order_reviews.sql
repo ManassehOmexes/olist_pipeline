@@ -1,3 +1,5 @@
+{{ config(dist='order_id', sort='review_creation_date') }}
+
 WITH source AS (
     SELECT * FROM {{ silver_source('olist_order_reviews_dataset') }}
 ),

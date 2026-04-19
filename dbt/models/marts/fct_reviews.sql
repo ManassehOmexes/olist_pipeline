@@ -1,3 +1,5 @@
+{{ config(dist='all', sort='review_score') }}
+
 WITH reviews AS (
     SELECT * FROM {{ ref('stg_order_reviews') }}
 ),

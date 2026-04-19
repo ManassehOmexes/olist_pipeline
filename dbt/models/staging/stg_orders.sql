@@ -1,3 +1,5 @@
+{{ config(dist='order_id', sort='order_purchase_timestamp') }}
+
 WITH source AS (
     SELECT
         *
