@@ -8,8 +8,13 @@ terraform {
     }
   }
 
-  # Lokaler State für jetzt - nach S3-Erstellung auf Remote State migrieren
-  backend "local" {}
+  backend "s3" {
+    bucket         = "olist-data-lake-dev"
+    key            = "terraform/state/terraform.tfstate"
+    region         = "eu-central-1"
+    dynamodb_table = "olist-terraform-locks"
+    encrypt        = true
+  }
 }
 
 provider "aws" {
@@ -18,6 +23,21 @@ provider "aws" {
   default_tags {
     tags = var.common_tags
   }
+}
+
+# --- DynamoDB State Locking ---
+# Verhindert parallele terraform apply Ausführungen
+resource "aws_dynamodb_table" "terraform_locks" {
+  name         = "olist-terraform-locks"
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "LockID"
+
+  attribute {
+    name = "LockID"
+    type = "S"
+  }
+
+  tags = var.common_tags
 }
 
 # --- S3 Modul ---
