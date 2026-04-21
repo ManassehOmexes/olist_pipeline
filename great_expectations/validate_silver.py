@@ -120,7 +120,7 @@ SUITES = {
 # Validierung
 
 def validate_table(context, table_name: str, s3_key: str) -> bool:
-    """Laedt eine Tabelle von S3 und validiert sie gegen die Expectation Suite."""
+    """Lädt eine Tabelle von S3 und validiert sie gegen die Expectation Suite."""
     log.info("Validiere: %s", table_name)
 
     try:

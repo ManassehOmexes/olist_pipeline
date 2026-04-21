@@ -100,6 +100,8 @@ with DAG(
          - XCom: dbt_run_status = 'passed'
        - dbt_test: führt 42 Tests aus
          - XCom: dbt_test_status = 'passed'
+
+    Power BI verbindet sich direkt per ODBC mit Redshift — kein CSV Export nötig.
     """,
 ) as dag:
 
