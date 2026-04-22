@@ -33,16 +33,14 @@ models:
         tests:
           - not_null
           - relationships:
-              arguments:
-                to: ref('stg_orders')
-                field: order_id
+              to: ref('stg_orders')
+              field: order_id
       - name: product_id
         tests:
           - not_null
           - relationships:
-              arguments:
-                to: ref('stg_products')
-                field: product_id
+              to: ref('stg_products')
+              field: product_id
       - name: seller_id
         tests:
           - not_null

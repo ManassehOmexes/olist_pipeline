@@ -14,6 +14,11 @@ x-airflow-common:
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__WEBSERVER__SECRET_KEY: 'olist-secret'
     # AWS Credentials kommen via env_file aus ../.env
+    # OpenLineage: sendet Lineage-Events an Marquez
+    AIRFLOW__OPENLINEAGE__TRANSPORT: '{"type": "http", "url": "http://marquez:5000", "endpoint": "api/v1/lineage"}'
+    AIRFLOW__OPENLINEAGE__NAMESPACE: 'olist-pipeline'
+    # Installiert den OpenLineage Provider beim Container-Start
+    _PIP_ADDITIONAL_REQUIREMENTS: 'apache-airflow-providers-openlineage great_expectations boto3 pandas dbt-core==1.8.1 dbt-redshift==1.8.1 openlineage-dbt'
   volumes:
     # DAG Dateien aus unserem Repo werden in den Container gemountet
     - ./dags:/opt/airflow/dags
@@ -21,6 +26,10 @@ x-airflow-common:
     - ./plugins:/opt/airflow/plugins
     # Rohdaten damit der DAG die CSVs lesen kann
     - ../data:/opt/airflow/data
+    # Great Expectations Skript muss im Container verfügbar sein
+    - ../great_expectations:/opt/airflow/great_expectations
+    # dbt Projekt für dbt run/test im Container
+    - ../dbt:/opt/airflow/dbt
   depends_on:
     postgres:
       condition: service_healthy
@@ -39,6 +48,8 @@ services:
       POSTGRES_DB: airflow
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      # Init-Skript erstellt die Marquez-DB beim ersten Start automatisch
+      - ./postgres-init:/docker-entrypoint-initdb.d
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "airflow"]
       interval: 10s
@@ -75,6 +86,40 @@ services:
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
+    restart: always
+
+  # --------------------------------------------------
+  # Marquez API - empfängt OpenLineage Events
+  # Airflow und dbt senden Lineage-Daten hierher (Port 5000)
+  # --------------------------------------------------
+  marquez:
+    image: marquezproject/marquez:latest
+    ports:
+      - "5000:5000"
+      - "5001:5001"
+    environment:
+      MARQUEZ_CONFIG: /opt/marquez/marquez.yml
+    volumes:
+      - ./marquez.yml:/opt/marquez/marquez.yml:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: always
+
+  # --------------------------------------------------
+  # Marquez Web UI - visualisiert den Lineage-Graphen
+  # Erreichbar auf localhost:3000
+  # --------------------------------------------------
+  marquez-web:
+    image: marquezproject/marquez-web:latest
+    ports:
+      - "3000:3000"
+    environment:
+      MARQUEZ_HOST: marquez
+      MARQUEZ_PORT: 5000
+      WEB_PORT: 3000
+    depends_on:
+      - marquez
     restart: always
 
 volumes:

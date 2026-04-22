@@ -59,11 +59,17 @@ def run_dbt(command: str, **context) -> None:
 
     try:
         result = subprocess.run(
-            ['dbt', command, '--no-partial-parse', '--target', 'prod'],
+            ['dbt', command, '--no-partial-parse', '--target', 'prod', '--profiles-dir', f'{ROOT}/dbt'],
             cwd=f'{ROOT}/dbt',
             capture_output=True,
             text=True,
-            env={**os.environ, 'REDSHIFT_PASSWORD': os.environ['REDSHIFT_PASSWORD']},
+            env={
+                **os.environ,
+                'REDSHIFT_PASSWORD': os.environ['REDSHIFT_PASSWORD'],
+                # Lineage-Events an Marquez senden (läuft im selben Docker-Netzwerk)
+                'OPENLINEAGE_URL': 'http://marquez:5000',
+                'OPENLINEAGE_NAMESPACE': 'olist-dbt',
+            },
         )
         log.info(result.stdout)
 

@@ -1,0 +1,25 @@
+olist_dbt:
+  outputs:
+    dev:
+      type: duckdb
+      path: "/opt/airflow/dbt/dev.duckdb"
+      threads: 4
+      extensions:
+        - httpfs
+      settings:
+        s3_region: eu-central-1
+        s3_access_key_id: "{{ env_var('AWS_ACCESS_KEY_ID') }}"
+        s3_secret_access_key: "{{ env_var('AWS_SECRET_ACCESS_KEY') }}"
+
+    prod:
+      type: redshift
+      host: olist-workgroup-dev.710220507619.eu-central-1.redshift-serverless.amazonaws.com
+      port: 5439
+      user: admin
+      password: "{{ env_var('REDSHIFT_PASSWORD') }}"
+      dbname: olist
+      schema: marts
+      threads: 4
+      connect_timeout: 30
+
+  target: dev
