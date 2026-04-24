@@ -1,0 +1,19 @@
+{
+  "name": "olist-raw-to-bronze",
+  "syncCatalog": {
+    "streams": [
+      { "stream": { "name": "olist_orders_dataset" }, "config": { "syncMode": "incremental", "destinationSyncMode": "append" } },
+      { "stream": { "name": "olist_order_items_dataset" }, "config": { "syncMode": "incremental", "destinationSyncMode": "append" } },
+      { "stream": { "name": "olist_order_payments_dataset" }, "config": { "syncMode": "incremental", "destinationSyncMode": "append" } },
+      { "stream": { "name": "olist_order_reviews_dataset" }, "config": { "syncMode": "incremental", "destinationSyncMode": "append" } },
+      { "stream": { "name": "olist_customers_dataset" }, "config": { "syncMode": "full_refresh", "destinationSyncMode": "overwrite" } },
+      { "stream": { "name": "olist_sellers_dataset" }, "config": { "syncMode": "full_refresh", "destinationSyncMode": "overwrite" } },
+      { "stream": { "name": "olist_products_dataset" }, "config": { "syncMode": "full_refresh", "destinationSyncMode": "overwrite" } },
+      { "stream": { "name": "olist_geolocation_dataset" }, "config": { "syncMode": "full_refresh", "destinationSyncMode": "overwrite" } },
+      { "stream": { "name": "product_category_name_translation" }, "config": { "syncMode": "full_refresh", "destinationSyncMode": "overwrite" } }
+    ]
+  },
+  "scheduleType": "cron",
+  "scheduleData": { "cron": { "cronExpression": "0 6 * * *", "cronTimeZone": "Europe/Berlin" } },
+  "status": "active"
+}

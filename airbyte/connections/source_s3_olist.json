@@ -1,0 +1,25 @@
+{
+  "name": "olist-s3-raw-csv",
+  "sourceDefinitionId": "69589781-7828-43c5-9f63-8925b1c1ccc2",
+  "connectionConfiguration": {
+    "dataset": "olist_raw",
+    "path_pattern": "**/*.csv",
+    "format": {
+      "filetype": "csv",
+      "delimiter": ",",
+      "quote_char": "\"",
+      "escape_char": "\\",
+      "encoding": "UTF-8",
+      "double_quote": true,
+      "infer_datatypes": true
+    },
+    "storage": {
+      "storage_type": "S3",
+      "bucket": "olist-data-lake-dev",
+      "aws_access_key_id": "${AWS_ACCESS_KEY_ID}",
+      "aws_secret_access_key": "${AWS_SECRET_ACCESS_KEY}",
+      "path_prefix": "raw/"
+    },
+    "start_date": "2017-01-01T00:00:00Z"
+  }
+}

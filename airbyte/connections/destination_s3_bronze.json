@@ -1,0 +1,21 @@
+{
+  "name": "s3-bronze-layer",
+  "destinationDefinitionId": "4816b78f-1489-44c1-9060-4b19d5fa9362",
+  "connectionConfiguration": {
+    "s3_bucket_name": "olist-data-lake-dev",
+    "s3_bucket_path": "bronze",
+    "s3_bucket_region": "eu-central-1",
+    "access_key_id": "${AWS_ACCESS_KEY_ID}",
+    "secret_access_key": "${AWS_SECRET_ACCESS_KEY}",
+    "format": {
+      "format_type": "Parquet",
+      "compression_codec": "SNAPPY",
+      "block_size_mb": 128,
+      "max_padding_size_mb": 8,
+      "page_size_kb": 1024,
+      "dictionary_encoding": true,
+      "dictionary_page_size_kb": 1024
+    },
+    "s3_path_format": "${NAMESPACE}/${STREAM_NAME}/${STREAM_NAME}_${EPOCH}"
+  }
+}
