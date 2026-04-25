@@ -238,11 +238,53 @@ terraform apply
 - [ ] dbt: `dbt run && dbt test` = 42/42 PASS
 - [ ] CI/CD: GitHub Actions grün auf main
 
-**Noch nicht "Ready-Ready" (offene Punkte):**
+**Noch nicht "Ready-Ready" (offene Punkte — Schritt-für-Schritt-Plan):**
 
-- S3 Cross-Region Replication fehlt (Region-Outage = Datenverlust)
-- Redshift Password via AWS Secrets Manager statt tfvars (aktuell: Klartext in tfvars)
-- Airbyte-Connections über API deployen statt manuell klicken
+#### Schritt A — Secrets Manager für Redshift-Passwort
+
+**Warum:** Aktuell liegt das Redshift-Passwort im Klartext in `terraform.tfvars`.
+Das ist gitignored — also nicht im Repository — aber es liegt unverschlüsselt auf der Festplatte.
+In einer echten DPaaS-Umgebung lesen Airflow, Glue und Anwendungen Passwörter aus AWS Secrets Manager.
+So ist das Passwort verschlüsselt (KMS), zentral rotierbar und auditierbar (CloudTrail).
+
+**Was wir tun:**
+
+- In `terraform/modules/redshift/main.tf`: `aws_secretsmanager_secret` erstellen, Passwort aus Variable dort ablegen
+- Redshift Namespace liest weiter aus Variable (kein Breaking Change für bestehende Deployments)
+- Zukünftige Dienste (Airflow DAGs, Glue) lesen via `boto3.client('secretsmanager').get_secret_value()`
+- `terraform.tfvars.example` bleibt als Onboarding-Schritt, Passwort wird danach in SM verwaltet
+
+**Ergebnis:** Passwort ist nach dem ersten `terraform apply` in Secrets Manager — kein Klartext mehr nötig.
+
+#### Schritt B — S3 Cross-Region Replication (CRR)
+
+**Warum:** Wenn eu-central-1 einen Region-Ausfall hat, sind alle Daten (Bronze/Silver/Gold) nicht erreichbar.
+CRR repliziert Bronze automatisch und asynchron in eu-west-1 — ohne Pipeline-Änderungen.
+Kosten: ~2× Storage-Kosten für Bronze. Für kritische Kundendaten ist das akzeptabel.
+
+**Was wir tun:**
+
+- In `terraform/main.tf`: zweiten AWS-Provider (`aws.replica`) für eu-west-1 hinzufügen
+- In `terraform/modules/s3/main.tf`: Replica-Bucket + Replication-IAM-Rolle + CRR-Konfiguration
+- Nur `bronze/` Prefix wird repliziert (Silver/Gold sind aus Bronze reproduzierbar)
+- `terraform/variables.tf`: `replica_region` Variable hinzufügen (default: `eu-west-1`)
+
+**Ergebnis:** Bronze-Daten sind nach jedem Schreibvorgang automatisch in zwei Regionen.
+
+#### Schritt C — Airbyte-Connections per API deployen
+
+**Warum:** Aktuell muss man die Airbyte-Connection manuell in der UI klicken.
+Das widerspricht dem "kein manueller Klick"-Prinzip von Ready-Ready.
+Airbyte hat eine REST-API — wir können Source, Destination und Connection per Script anlegen.
+
+**Was wir tun:**
+
+- `scripts/airbyte_deploy.py`: liest die bestehenden JSON-Configs aus `airbyte/connections/`
+- Ruft Airbyte API auf: Workspace ermitteln → Source anlegen → Destination anlegen → Connection anlegen
+- Idempotent: prüft ob Source/Destination schon existiert bevor neu anlegen
+- Wird Teil des Deployment-Flows nach `terraform apply`
+
+**Ergebnis:** `python scripts/airbyte_deploy.py` richtet alle Airbyte-Connections in < 30 Sekunden ein.
 
 ### Reproduzierbarkeit — Template-Strategie
 
