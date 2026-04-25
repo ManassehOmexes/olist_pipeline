@@ -2,6 +2,8 @@
 
 End-to-end ELT pipeline on the [Olist Brazilian E-Commerce Dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) built as a portfolio project following industry standards and DataOps best practices.
 
+Executive Summary / Value Proposition
+
 ## Architecture
 
 ```mermaid
@@ -118,10 +120,9 @@ Get-Content .env | Where-Object { $_ -match '=' -and $_ -notmatch '^#' } | ForEa
 
 # Run full pipeline: GE validation + dbt run + dbt test
 python run_pipeline.py
-
-# Export Gold tables for Power BI
-python scripts/export_to_csv.py
 ```
+
+Power BI connects directly to Redshift Serverless via ODBC — no export step needed.
 
 ### dbt commands
 
@@ -144,6 +145,49 @@ erDiagram
     stg_orders ||--o{ stg_order_reviews : "order_id"
     stg_orders ||--o{ stg_order_payments : "order_id"
 ```
+
+## Disaster Recovery & Monitoring
+
+### 24/7 Pipeline Health via CloudWatch
+
+The pipeline uses AWS CloudWatch Alarms to detect failures automatically and alert the responsible team via email.
+
+```text
+Glue Job runs
+     │
+     ├── success → CloudWatch metric: numFailedTasks = 0 → OK state
+     └── failure → CloudWatch metric: numFailedTasks ≥ 1 → ALARM state
+                        └── SNS Topic → Email alert within 5 minutes
+```
+
+**Key alarms configured (Terraform `modules/monitoring`):**
+
+| Alarm                | Trigger                          | Action    |
+|----------------------|----------------------------------|-----------|
+| `glue-job-failed`    | Glue task failures ≥ 1 in 10 min | SNS email |
+
+**Airflow safety net:** Every DAG task has `retries=3` and `retry_delay=5min` — transient network issues self-heal before an alarm fires.
+
+### Recovery Procedures
+
+| Scenario | Recovery |
+| --- | --- |
+| Glue job fails | Re-trigger DAG from failed task in Airflow UI — Bronze is immutable, re-run is safe |
+| dbt test fails | Check `dbt/target/run_results.json`, fix upstream data, re-run `dbt run --select` |
+| S3 data corrupted | S3 Versioning is enabled — restore previous object version via AWS Console or CLI |
+| Accidental Bronze overwrite | Lifecycle policy keeps Bronze in Glacier IR for 30+ days — retrieve and restore |
+
+### S3 Storage Tiers & Lifecycle
+
+Bronze data is immutable (append-only). After initial ingestion it moves automatically to cheaper storage:
+
+| Layer  | Days 0–30   | Days 30+                            | Days 90+                   |
+|--------|-------------|-------------------------------------|----------------------------|
+| Bronze | S3 Standard | Glacier Instant Retrieval (−68%)    | —                          |
+| Silver | S3 Standard | —                                   | S3 Standard-IA (−40%)      |
+| Gold   | S3 Standard | —                                   | —                          |
+
+Glacier Instant Retrieval: data is archived but still accessible in milliseconds — no pipeline changes needed.
 
 ## Dataset
 

@@ -68,3 +68,37 @@ resource "aws_s3_object" "scripts" {
   bucket = aws_s3_bucket.data_lake.id
   key    = "scripts/"
 }
+
+# Lifecycle: Bronze nach 30 Tagen nach Glacier Instant Retrieval verschieben
+# Glacier IR: 68% günstiger als Standard, Zugriff in Millisekunden
+resource "aws_s3_bucket_lifecycle_configuration" "data_lake" {
+  bucket = aws_s3_bucket.data_lake.id
+
+  rule {
+    id     = "bronze-to-glacier-ir"
+    status = "Enabled"
+
+    filter {
+      prefix = "bronze/"
+    }
+
+    transition {
+      days          = 30
+      storage_class = "GLACIER_IR"
+    }
+  }
+
+  rule {
+    id     = "silver-to-ia"
+    status = "Enabled"
+
+    filter {
+      prefix = "silver/"
+    }
+
+    transition {
+      days          = 90
+      storage_class = "STANDARD_IA"
+    }
+  }
+}

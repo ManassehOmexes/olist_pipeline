@@ -3,6 +3,9 @@
 # Glue, Airflow, Redshift
 # -------------------------------------------------------
 
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+
 
 # -------------------------------------------------------
 # 1. GLUE ROLLE
@@ -82,7 +85,7 @@ resource "aws_iam_role" "airflow" {
 }
 
 data "aws_iam_policy_document" "airflow_permissions" {
-  # Glue Jobs starten und überwachen
+  # Glue Jobs starten und überwachen — nur Jobs dieses Projekts
   statement {
     sid = "GlueAccess"
     actions = [
@@ -91,7 +94,9 @@ data "aws_iam_policy_document" "airflow_permissions" {
       "glue:GetJobRuns",
       "glue:BatchStopJobRun"
     ]
-    resources = ["*"]
+    resources = [
+      "arn:aws:glue:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:job/${var.project}-*"
+    ]
   }
 
   # S3 für DAG Dateien und Logs
@@ -104,10 +109,14 @@ data "aws_iam_policy_document" "airflow_permissions" {
     ]
   }
 
+  # CloudWatch Logs — nur Pipeline-relevante Log Groups
   statement {
     sid     = "CloudWatchLogs"
     actions = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
-    resources = ["arn:aws:logs:*:*:*"]
+    resources = [
+      "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/aws-glue/*",
+      "arn:aws:logs:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:log-group:/airflow/*"
+    ]
   }
 }
 
