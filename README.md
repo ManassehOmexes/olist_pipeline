@@ -2,7 +2,16 @@
 
 End-to-end ELT pipeline on the [Olist Brazilian E-Commerce Dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) built as a portfolio project following industry standards and DataOps best practices.
 
-Executive Summary / Value Proposition
+## Executive Summary
+
+This project implements a **Data Pipeline as a Service (DPaaS)** framework that transforms raw, fragmented e-commerce data into business-ready insights — fully automated, end-to-end, and built to production standards.
+
+| Pillar | What it delivers |
+| --- | --- |
+| **Cost Efficiency** | Automated S3 Lifecycle policies shift archival data to Glacier Instant Retrieval, cutting storage costs by up to 68% — with millisecond retrieval intact |
+| **Data Reliability** | Multi-layer validation (Great Expectations on Silver + 42 dbt tests on Gold) enforces a single source of truth before any data reaches analysts |
+| **Operational Excellence** | CloudWatch alarms and SNS notifications provide 24/7 pipeline health monitoring with sub-5-minute incident alerting — no manual checks required |
+| **Scalability** | Every resource is defined in Terraform — a new environment is one `terraform apply` away, with no manual AWS console steps |
 
 ## Architecture
 
