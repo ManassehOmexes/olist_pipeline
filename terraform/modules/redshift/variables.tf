@@ -29,3 +29,8 @@ variable "base_capacity" {
   type        = number
   default     = 8
 }
+
+variable "aws_region" {
+  description = "AWS Region — wird im Secrets Manager Eintrag als Host-Teil gespeichert"
+  type        = string
+}

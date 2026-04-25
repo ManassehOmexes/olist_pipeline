@@ -109,6 +109,16 @@ data "aws_iam_policy_document" "airflow_permissions" {
     ]
   }
 
+  # Secrets Manager — Redshift-Credentials lesen
+  # Warum: Airflow DAGs lesen das Passwort aus SM statt aus Umgebungsvariablen
+  statement {
+    sid     = "SecretsManagerRead"
+    actions = ["secretsmanager:GetSecretValue"]
+    resources = [
+      "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${var.project}/redshift/*"
+    ]
+  }
+
   # CloudWatch Logs — nur Pipeline-relevante Log Groups
   statement {
     sid     = "CloudWatchLogs"

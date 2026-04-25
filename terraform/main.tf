@@ -91,4 +91,5 @@ module "redshift" {
   common_tags       = var.common_tags
   redshift_role_arn = module.iam.redshift_role_arn
   admin_password    = var.redshift_admin_password
+  aws_region        = var.aws_region
 }

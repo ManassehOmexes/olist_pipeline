@@ -27,6 +27,27 @@ resource "aws_security_group" "redshift" {
   tags = var.common_tags
 }
 
+# Secrets Manager: Redshift-Passwort verschlüsselt speichern
+# Warum: kein Klartext in .env oder tfvars — Airflow/Glue lesen von hier
+# Format: {"username": "admin", "password": "...", "engine": "redshift"}
+resource "aws_secretsmanager_secret" "redshift_password" {
+  name                    = "${var.project}/redshift/admin-password/${var.environment}"
+  recovery_window_in_days = 7
+  tags                    = var.common_tags
+}
+
+resource "aws_secretsmanager_secret_version" "redshift_password" {
+  secret_id = aws_secretsmanager_secret.redshift_password.id
+  secret_string = jsonencode({
+    username = "admin"
+    password = var.admin_password
+    engine   = "redshift"
+    host     = "${var.project}-workgroup-${var.environment}.${var.aws_region}.redshift-serverless.amazonaws.com"
+    port     = 5439
+    dbname   = var.project
+  })
+}
+
 # Namespace: enthält die Datenbank, User und Schemas
 resource "aws_redshiftserverless_namespace" "main" {
   namespace_name      = "${var.project}-namespace-${var.environment}"
