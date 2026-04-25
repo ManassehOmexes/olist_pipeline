@@ -145,6 +145,24 @@ Diesen Abschnitt nach jeder Session selbst aktualisieren.
 - Data Contracts: Soda Core oder Great Expectations für Contract Enforcement
 - Kosten-Tracking: AWS Cost Explorer + Tagging pro Kunde
 
+### Phase 6 — Disaster Recovery (Production-Readiness)
+
+Aktuelle Lücken gegenüber echtem Production-DPaaS:
+
+| Gap | Risiko | Lösung |
+| --- | --- | --- |
+| Kein S3 Cross-Region Replication | Region-Outage = Datenverlust | CRR Bronze → eu-west-1 (Terraform: `aws_s3_bucket_replication_configuration`) |
+| Kein S3 Object Lock | Admin kann Bronze löschen | Object Lock im COMPLIANCE-Modus, 30 Tage Retention |
+| Redshift Snapshot-Retention nicht explizit | AWS-Default = 1 Tag | In Terraform: `aws_redshift_serverless_namespace` snapshot config |
+| RTO/RPO nicht definiert | Kein messbares SLA | RTO: 4h, RPO: 24h — schriftlich im Runbook |
+
+DRY-Status: ✅ Gut umgesetzt
+
+- Terraform: Module für S3, IAM, Glue, Redshift, Monitoring — keine wiederholten Resource-Blöcke
+- `common_tags` einmal definiert, überall per Variable injiziert
+- dbt: `ref()` / `source()` durchgehend, kein hardcoded Schema
+- Python: `run_pipeline.py` als Single Entry Point für GE → dbt
+
 ### Lambda-Architektur — Optionales Add-on (Speed Layer)
 
 Standard-Stack = Batch Layer. Kunden die Echtzeit benötigen erhalten zusätzlich den Speed Layer:
@@ -169,6 +187,25 @@ Wann Speed Layer sinnvoll ist:
 
 Kappa als Alternative: Nur Kafka, Batch = Stream mit historischem Replay — weniger Doppelcode,
 empfohlen wenn Echtzeit die Hauptanforderung ist und Batch sekundär.
+
+### Cloud-Agnostik — AWS vs. Azure vs. GCP (Oberflächlich)
+
+Die Konzepte sind identisch — nur die Service-Namen ändern sich. dbt und Terraform laufen auf allen drei Clouds.
+
+| Konzept | AWS (unser Stack) | Azure | GCP |
+| --- | --- | --- | --- |
+| Objektspeicher | S3 | Azure Data Lake Storage Gen2 | Cloud Storage |
+| ETL / Transformation | AWS Glue | Azure Data Factory + Databricks | Dataflow / Dataproc |
+| Data Warehouse | Redshift Serverless | Azure Synapse Analytics | BigQuery |
+| Orchestrierung | MWAA (Managed Airflow) | Azure Managed Airflow / ADF | Cloud Composer |
+| Monitoring / Alerting | CloudWatch + SNS | Azure Monitor + Action Groups | Cloud Monitoring + Pub/Sub |
+| IAM / Zugriffssteuerung | IAM Roles + Policies | RBAC + Microsoft Entra ID | GCP IAM + Service Accounts |
+| Streaming | Kinesis / MSK (Kafka) | Azure Event Hubs | Pub/Sub + Dataflow |
+| IaC | Terraform (cloud-agnostic) | Terraform (cloud-agnostic) | Terraform (cloud-agnostic) |
+| Transformation Layer | dbt (warehouse-agnostic) | dbt (warehouse-agnostic) | dbt (warehouse-agnostic) |
+
+Kernaussage für DPaaS: Wer Terraform + dbt beherrscht, kann auf jeder Cloud deployen.
+Der Stack-Wechsel betrifft nur den Provider-Block in Terraform und das dbt-Adapter-Package.
 
 ### Reproduzierbarkeit — Template-Strategie
 
