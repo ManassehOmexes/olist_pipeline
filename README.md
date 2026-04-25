@@ -4,7 +4,7 @@ End-to-end ELT pipeline on the [Olist Brazilian E-Commerce Dataset](https://www.
 
 ## Executive Summary
 
-This project implements a **Data Pipeline as a Service (DPaaS)** framework that transforms raw, fragmented e-commerce data into business-ready insights — fully automated, end-to-end, and built to production standards.
+This project implements a **Data Pipeline as a Service (DPaaS)** framework that transforms raw, fragmented e-commerce data into business-ready insights, fully automated, end-to-end, and built to production standards.
 
 | Pillar | What it delivers |
 | --- | --- |

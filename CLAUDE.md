@@ -207,6 +207,43 @@ Die Konzepte sind identisch — nur die Service-Namen ändern sich. dbt und Terr
 Kernaussage für DPaaS: Wer Terraform + dbt beherrscht, kann auf jeder Cloud deployen.
 Der Stack-Wechsel betrifft nur den Provider-Block in Terraform und das dbt-Adapter-Package.
 
+### Ready-Ready — Verkaufsreife Definition
+
+**Definition:** Die Pipeline ist "Ready-Ready" wenn ein frischer AWS Account mit einem einzigen Deployment-Flow vollständig aufgesetzt werden kann — kein manueller Klick, kein undokumentierter Schritt.
+
+**Deployment-Flow (3 Schritte, einmalig):**
+
+```bash
+# 1. Bootstrap: S3-Bucket + DynamoDB für Terraform State anlegen
+cd terraform
+bash bootstrap.sh olist-data-lake-dev eu-central-1 olist
+
+# 2. Variablen eintragen
+cp terraform.tfvars.example terraform.tfvars
+# → alert_email + redshift_admin_password ausfüllen
+
+# 3. Infrastructure deployen
+terraform init
+terraform apply
+```
+
+**Ready-Ready Checkliste:**
+
+- [ ] `bash bootstrap.sh` läuft ohne Fehler durch (idempotent: zweiter Aufruf = kein Fehler)
+- [ ] `terraform init` findet Backend (S3 + DynamoDB existieren)
+- [ ] `terraform apply` läuft ohne Fehler durch — alle Ressourcen grün
+- [ ] `terraform apply` ein zweites Mal = "No changes" (Idempotenz)
+- [ ] SNS Email-Bestätigung erhalten und bestätigt
+- [ ] Airflow DAG `olist_bronze_upload` grün in MWAA/lokal
+- [ ] dbt: `dbt run && dbt test` = 42/42 PASS
+- [ ] CI/CD: GitHub Actions grün auf main
+
+**Noch nicht "Ready-Ready" (offene Punkte):**
+
+- S3 Cross-Region Replication fehlt (Region-Outage = Datenverlust)
+- Redshift Password via AWS Secrets Manager statt tfvars (aktuell: Klartext in tfvars)
+- Airbyte-Connections über API deployen statt manuell klicken
+
 ### Reproduzierbarkeit — Template-Strategie
 
 - Terraform Module parametrisiert: Bucket-Name, Region, Environment als Variable

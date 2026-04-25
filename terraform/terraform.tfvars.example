@@ -1,0 +1,10 @@
+# terraform.tfvars.example
+# Kopiere diese Datei zu terraform.tfvars und trage deine Werte ein.
+# WICHTIG: terraform.tfvars ist gitignored — niemals committen.
+
+# Email für CloudWatch/SNS Failure-Alarme
+alert_email = "deine-email@example.com"
+
+# Redshift Admin Passwort (min. 8 Zeichen, Groß+Klein+Zahl)
+# Empfehlung: aus AWS Secrets Manager laden statt hier eintragen
+redshift_admin_password = "HIER_SICHERES_PASSWORT_EINTRAGEN"
