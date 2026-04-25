@@ -43,3 +43,29 @@ models:
         tests:
           - not_null
           - unique
+
+  - name: fct_company_performance
+    description: >
+      Unternehmensperformance auf Bestellpositions-Ebene (Grain: order_item).
+      Kombiniert Umsatz, Bundesstaat, Kategorie und Review-Score in einer Tabelle.
+      Power BI kann damit alle KPI-Karten und Charts gleichzeitig bedienen.
+    columns:
+      - name: order_item_pk
+        tests:
+          - not_null
+          - unique
+      - name: order_id
+        tests:
+          - not_null
+      - name: order_month
+        tests:
+          - not_null
+      - name: customer_state
+        tests:
+          - not_null
+      - name: product_category
+        tests:
+          - not_null
+      - name: item_revenue
+        tests:
+          - not_null
