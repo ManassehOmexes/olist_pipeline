@@ -375,7 +375,7 @@ Kosten: ~2× Storage-Kosten für Bronze. Für kritische Kundendaten ist das akze
 
 **Ergebnis:** Bronze-Daten sind nach jedem Schreibvorgang automatisch in zwei Regionen.
 
-#### Schritt C — Airbyte-Connections per API deployen
+#### ✅ Schritt C — Airbyte-Connections per API deployen
 
 **Warum:** Aktuell muss man die Airbyte-Connection manuell in der UI klicken.
 Das widerspricht dem "kein manueller Klick"-Prinzip von Ready-Ready.
