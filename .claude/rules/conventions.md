@@ -38,3 +38,18 @@ Keine `.env`-Dateien committen.
 
 Remote State in S3, `common_tags` auf allen Ressourcen.  
 Kein ClickOps — alles über Terraform.
+
+## Naming — Keine Bindestriche
+
+Alle selbst definierten Bezeichner verwenden Unterstriche (`_`), keine Bindestriche (`-`).
+
+| Kontext | Richtig | Falsch |
+|---------|---------|--------|
+| dbt Modelle | `stg_orders` | `stg-orders` |
+| Python Funktionen / Variablen | `upload_file` | `upload-file` |
+| Airflow DAGs | `olist_bronze_upload` | `olist-bronze-upload` |
+| Terraform Ressourcen (Name-Attribut) | `s3_replication` | `s3-replication` |
+| SQL Spalten / Aliases | `order_count` | `order-count` |
+
+**Ausnahmen (AWS erzwingt Bindestriche):**  
+S3 Bucket-Namen (`olist-data-lake-dev`) und AWS-Ressourcen-Namen wo Unterstriche nicht erlaubt sind.

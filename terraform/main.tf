@@ -25,6 +25,16 @@ provider "aws" {
   }
 }
 
+# Alias-Provider für den Replica-Bucket in der DR-Region
+provider "aws" {
+  alias  = "replica"
+  region = var.replica_region
+
+  default_tags {
+    tags = var.common_tags
+  }
+}
+
 # --- DynamoDB State Locking ---
 # Verhindert parallele terraform apply Ausführungen
 resource "aws_dynamodb_table" "terraform_locks" {
@@ -47,6 +57,11 @@ module "s3" {
   project     = var.project
   environment = var.environment
   common_tags = var.common_tags
+
+  providers = {
+    aws         = aws
+    aws.replica = aws.replica
+  }
 }
 
 # --- IAM Modul ---

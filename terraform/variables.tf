@@ -4,6 +4,12 @@ variable "aws_region" {
   default     = "eu-central-1"
 }
 
+variable "replica_region" {
+  description = "AWS Region fuer den S3 Replica-Bucket (Disaster Recovery)"
+  type        = string
+  default     = "eu-west-1"
+}
+
 variable "project" {
   description = "Projektname - wird als Prefix in Ressourcennamen verwendet"
   type        = string
