@@ -178,6 +178,52 @@ python run_pipeline.py
 
 ---
 
+## Disaster Recovery
+
+### SLA-Definition
+
+| Kennzahl                           | Wert        | Bedeutung                                                      |
+|------------------------------------|-------------|----------------------------------------------------------------|
+| **RTO** (Recovery Time Objective)  | 4 Stunden   | Maximale Zeit bis die Pipeline nach einem Ausfall wieder läuft |
+| **RPO** (Recovery Point Objective) | 24 Stunden  | Maximaler akzeptabler Datenverlust (ein Tages-Batch)           |
+
+### S3 Object Lock — Bronze-Schutz
+
+Bronze-Objekte sind im COMPLIANCE-Modus für 30 Tage gesperrt. Das bedeutet:
+
+- Kein Nutzer kann ein Bronze-Objekt in den ersten 30 Tagen löschen — auch kein Admin oder Root-User
+- S3 gibt bei Löschversuchen einen `AccessDenied`-Fehler zurück
+- Nach 30 Tagen greift die Lifecycle-Policy: Bronze → Glacier Instant Retrieval
+
+**Was tun wenn ein Bronze-Objekt versehentlich überschrieben wurde?**
+
+Da Versionierung aktiv ist, existiert die alte Version noch:
+```bash
+# Alle Versionen eines Objekts auflisten
+aws s3api list-object-versions \
+  --bucket olist-data-lake-dev \
+  --prefix bronze/olist_orders/
+
+# Alte Version wiederherstellen (VersionId aus dem Output oben)
+aws s3api copy-object \
+  --copy-source olist-data-lake-dev/bronze/olist_orders/FILE.parquet?versionId=VERSIONID \
+  --bucket olist-data-lake-dev \
+  --key bronze/olist_orders/FILE.parquet
+```
+
+### S3 Cross-Region Replication — Wiederherstellung
+
+Wenn eu-central-1 (Primär-Region) ausfällt, sind Bronze-Daten in eu-west-1 verfügbar.
+
+```bash
+# Daten aus Replica-Bucket lesen (temporär auf eu-west-1 zeigen)
+aws s3 ls s3://olist-data-lake-dev-replica/bronze/ --region eu-west-1
+```
+
+RTO-Uhr startet sobald ein Region-Ausfall bestätigt ist. Ziel: Pipeline in eu-west-1 in unter 4 Stunden neu aufgesetzt.
+
+---
+
 ## Useful Commands
 
 ```bash

@@ -19,8 +19,11 @@ locals {
 }
 
 # --- Data Lake Bucket ---
+# HINWEIS: object_lock_enabled = true gilt nur für neu erstellte Buckets.
+# Auf bestehenden Buckets: Bucket muss neu angelegt oder AWS Support kontaktiert werden.
 resource "aws_s3_bucket" "data_lake" {
-  bucket = local.bucket_name
+  bucket              = local.bucket_name
+  object_lock_enabled = true
 
   tags = merge(var.common_tags, {
     Name = local.bucket_name
@@ -110,6 +113,22 @@ resource "aws_s3_bucket_lifecycle_configuration" "data_lake" {
     transition {
       days          = 90
       storage_class = "STANDARD_IA"
+    }
+  }
+}
+
+# Object Lock: verhindert Löschen/Überschreiben aller neuen Objekte im Bucket.
+# COMPLIANCE-Modus: keine Ausnahme, auch nicht für Root-User oder Admins.
+# 30 Tage = Mindestzeit für Incident-Erkennung + Recovery in diesem Stack.
+# Gilt für alle Prefixes (bronze/, silver/, gold/) — prefix-basierter Lock
+# ist auf Bucket-Ebene nicht möglich, nur per Upload-Request pro Objekt.
+resource "aws_s3_bucket_object_lock_configuration" "data_lake" {
+  bucket = aws_s3_bucket.data_lake.id
+
+  rule {
+    default_retention {
+      mode = "COMPLIANCE"
+      days = 30
     }
   }
 }
