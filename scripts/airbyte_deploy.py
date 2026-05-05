@@ -27,6 +27,7 @@ import requests
 
 log = logging.getLogger(__name__)
 
+# Port 8006 ist der abctl-Standard. Bei Docker Compose Airbyte: port 8000.
 AIRBYTE_URL = os.environ.get("AIRBYTE_URL", "http://localhost:8006")
 AIRBYTE_USERNAME = os.environ.get("AIRBYTE_USERNAME", "airbyte")
 AIRBYTE_PASSWORD = os.environ.get("AIRBYTE_PASSWORD", "password")
@@ -34,7 +35,11 @@ CONNECTIONS_DIR = Path(__file__).parent.parent / "airbyte" / "connections"
 
 
 def _resolve_env_vars(config: dict) -> dict:
-    """Ersetzt ${VAR}-Platzhalter in der Config durch Umgebungsvariablen."""
+    """Ersetzt ${VAR}-Platzhalter in der Config durch Umgebungsvariablen.
+
+    Secrets stehen nie im Config-File — nur als Platzhalter.
+    Die echten Werte kommen ausschließlich aus der Umgebung.
+    """
     raw = json.dumps(config)
 
     def replacer(match: re.Match) -> str:
@@ -44,6 +49,7 @@ def _resolve_env_vars(config: dict) -> dict:
             raise RuntimeError(f"Umgebungsvariable '{var_name}' nicht gesetzt")
         return value
 
+    # Matcht ${BELIEBIGER_NAME} — Gruppe 1 ist der Variablenname ohne ${}
     return json.loads(re.sub(r"\$\{([^}]+)\}", replacer, raw))
 
 
@@ -59,6 +65,8 @@ def _post(path: str, body: dict) -> dict:
         response.raise_for_status()
         return response.json()
     except requests.HTTPError as e:
+        # HTTPError separat abfangen, weil response.text den Airbyte-Fehlergrund enthält —
+        # bei RequestException gibt es keine Response.
         log.error("HTTP-Fehler %s bei %s: %s", e.response.status_code, path, e.response.text)
         raise
     except requests.RequestException as e:
@@ -71,6 +79,7 @@ def get_workspace_id() -> str:
     workspaces = result.get("workspaces", [])
     if not workspaces:
         raise RuntimeError("Kein Airbyte-Workspace gefunden — ist Airbyte gestartet?")
+    # Self-hosted Airbyte hat immer genau einen Workspace.
     workspace_id = workspaces[0]["workspaceId"]
     log.info("Workspace: %s", workspace_id)
     return workspace_id
@@ -79,6 +88,8 @@ def get_workspace_id() -> str:
 def find_source(workspace_id: str, name: str) -> Optional[str]:
     result = _post("sources/list", {"workspaceId": workspace_id})
     for source in result.get("sources", []):
+        # Name ist der Idempotenz-Schlüssel. Airbyte erlaubt Duplikate —
+        # deshalb beim ersten Treffer abbrechen statt alle zu prüfen.
         if source["name"] == name:
             log.info("Source '%s' existiert bereits: %s", name, source["sourceId"])
             return source["sourceId"]
@@ -132,6 +143,8 @@ def find_connection(workspace_id: str, name: str) -> Optional[str]:
 
 
 def create_connection(source_id: str, destination_id: str, config: dict) -> str:
+    # Connection braucht kein workspaceId — Airbyte leitet den Workspace
+    # automatisch aus sourceId und destinationId ab.
     payload = {
         "sourceId": source_id,
         "destinationId": destination_id,
@@ -164,6 +177,7 @@ def deploy() -> None:
     if destination_id is None:
         destination_id = create_destination(workspace_id, destination_config)
 
+    # Connection zuletzt: create_connection benötigt source_id UND destination_id.
     connection_id = find_connection(workspace_id, connection_config["name"])
     if connection_id is None:
         connection_id = create_connection(source_id, destination_id, connection_config)

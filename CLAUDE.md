@@ -315,7 +315,7 @@ Der Stack-Wechsel betrifft nur den Provider-Block in Terraform und das dbt-Adapt
 
 **Definition:** Die Pipeline ist "Ready-Ready" wenn ein frischer AWS Account mit einem einzigen Deployment-Flow vollständig aufgesetzt werden kann — kein manueller Klick, kein undokumentierter Schritt.
 
-**Deployment-Flow (3 Schritte, einmalig):**
+**Deployment-Flow (4 Schritte, einmalig):**
 
 ```bash
 # 1. Bootstrap: S3-Bucket + DynamoDB für Terraform State anlegen
@@ -324,11 +324,16 @@ bash bootstrap.sh olist-data-lake-dev eu-central-1 olist
 
 # 2. Variablen eintragen
 cp terraform.tfvars.example terraform.tfvars
-# → alert_email + redshift_admin_password ausfüllen
+# → alert_email + redshift_admin_password + replica_region ausfüllen
 
 # 3. Infrastructure deployen
 terraform init
 terraform apply
+
+# 4. Airbyte Connections deployen (kein manueller UI-Klick)
+export AWS_ACCESS_KEY_ID=dein-key
+export AWS_SECRET_ACCESS_KEY=dein-secret
+python scripts/airbyte_deploy.py
 ```
 
 **Ready-Ready Checkliste:**

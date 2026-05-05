@@ -8,3 +8,7 @@ alert_email = "deine-email@example.com"
 # Redshift Admin Passwort (min. 8 Zeichen, Groß+Klein+Zahl)
 # Empfehlung: aus AWS Secrets Manager laden statt hier eintragen
 redshift_admin_password = "HIER_SICHERES_PASSWORT_EINTRAGEN"
+
+# DR-Region für den S3 Replica-Bucket (Cross-Region Replication)
+# Muss eine andere Region als aws_region sein
+replica_region = "eu-west-1"
