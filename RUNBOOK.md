@@ -222,6 +222,38 @@ aws s3 ls s3://olist-data-lake-dev-replica/bronze/ --region eu-west-1
 
 RTO-Uhr startet sobald ein Region-Ausfall bestätigt ist. Ziel: Pipeline in eu-west-1 in unter 4 Stunden neu aufgesetzt.
 
+### Redshift Serverless — Recovery Points (bekannte AWS-Einschränkung)
+
+Redshift Serverless erstellt automatisch Recovery Points (interne Snapshots).
+
+**Wichtige Einschränkung:** Die Retention-Dauer ist fest auf **24 Stunden** gesetzt.
+Sie kann weder über Terraform noch über die AWS API verlängert werden.
+Das Argument `snapshot_retention_period` existiert nur bei `aws_redshift_cluster` (provisioned) — nicht bei `aws_redshiftserverless_namespace`.
+
+**Bedeutung für unser SLA:**
+
+- RPO = 24 Stunden → passt zur automatischen 24h-Retention ✅
+- Für längere Retention: manuelle Snapshots per CLI oder `aws_redshiftserverless_snapshot` in Terraform
+
+**Manuellen Snapshot erstellen (bei geplanten Wartungsarbeiten oder vor großen Migrationen):**
+
+```bash
+# Manuellen Snapshot erstellen
+aws redshift-serverless create-snapshot \
+  --namespace-name olist-namespace-dev \
+  --snapshot-name olist-manual-snapshot-$(date +%Y%m%d)
+
+# Vorhandene Snapshots auflisten
+aws redshift-serverless list-snapshots \
+  --namespace-name olist-namespace-dev
+
+# Namespace aus Snapshot wiederherstellen (erstellt neuen Namespace)
+aws redshift-serverless restore-from-snapshot \
+  --namespace-name olist-namespace-restored \
+  --workgroup-name olist-workgroup-restored \
+  --snapshot-name olist-manual-snapshot-20260101
+```
+
 ---
 
 ## Useful Commands
