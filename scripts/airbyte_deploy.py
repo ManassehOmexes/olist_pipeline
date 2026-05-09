@@ -1,18 +1,40 @@
 """
-Deployt Airbyte Source, Destination und Connection per API.
+Deployt Airbyte Pipelines per API — idempotent und generisch.
+
+Jede Pipeline besteht aus drei Dateien in airbyte/connections/:
+    source_<pipeline>.json
+    connection_<pipeline>_to_bronze.json
+    destination_s3_bronze.json   (geteilt, einmal pro Environment)
+
 Idempotent: bestehende Ressourcen werden wiederverwendet, nicht neu erstellt.
 
 Voraussetzung: pip install requests
 
 Verwendung:
+    # Alle Pipelines deployen (entdeckt source_*.json automatisch)
     python scripts/airbyte_deploy.py
 
-Umgebungsvariablen:
-    AIRBYTE_URL          Airbyte API Basis-URL (default: http://localhost:8006)
-    AIRBYTE_USERNAME     Basic-Auth Benutzername (default: airbyte)
-    AIRBYTE_PASSWORD     Basic-Auth Passwort (default: password)
-    AWS_ACCESS_KEY_ID    Wird in den Configs als ${AWS_ACCESS_KEY_ID} referenziert
-    AWS_SECRET_ACCESS_KEY
+    # Einzelne Pipeline deployen
+    python scripts/airbyte_deploy.py shopify
+    python scripts/airbyte_deploy.py olist
+    python scripts/airbyte_deploy.py postgres
+
+Umgebungsvariablen (Pflicht):
+    AIRBYTE_URL            Airbyte API Basis-URL (default: http://localhost:8006)
+    AIRBYTE_USERNAME       Basic-Auth Benutzername (default: airbyte)
+    AIRBYTE_PASSWORD       Basic-Auth Passwort (default: password)
+    AWS_ACCESS_KEY_ID      Für S3-Destination
+    AWS_SECRET_ACCESS_KEY  Für S3-Destination
+
+Kunden-spezifische Variablen (je nach Pipeline):
+    CUSTOMER_ID            Eindeutiger Kundenbezeichner (z.B. "acme")
+    SHOPIFY_SHOP           Shopify Shop-Domain (z.B. "acme.myshopify.com")
+    SHOPIFY_API_PASSWORD   Shopify Admin API Access Token
+    SHOPIFY_START_DATE     ISO 8601 Startdatum (z.B. "2023-01-01T00:00:00Z")
+    POSTGRES_HOST          PostgreSQL Hostname
+    POSTGRES_DATABASE      Datenbankname
+    POSTGRES_USERNAME      Benutzername
+    POSTGRES_PASSWORD      Passwort
 """
 
 import json
@@ -27,7 +49,6 @@ import requests
 
 log = logging.getLogger(__name__)
 
-# Port 8006 ist der abctl-Standard. Bei Docker Compose Airbyte: port 8000.
 AIRBYTE_URL = os.environ.get("AIRBYTE_URL", "http://localhost:8006")
 AIRBYTE_USERNAME = os.environ.get("AIRBYTE_USERNAME", "airbyte")
 AIRBYTE_PASSWORD = os.environ.get("AIRBYTE_PASSWORD", "password")
@@ -35,10 +56,10 @@ CONNECTIONS_DIR = Path(__file__).parent.parent / "airbyte" / "connections"
 
 
 def _resolve_env_vars(config: dict) -> dict:
-    """Ersetzt ${VAR}-Platzhalter in der Config durch Umgebungsvariablen.
+    """Ersetzt ${VAR}-Platzhalter durch Umgebungsvariablen.
 
     Secrets stehen nie im Config-File — nur als Platzhalter.
-    Die echten Werte kommen ausschließlich aus der Umgebung.
+    Fehlt eine Variable, wird deploy() mit RuntimeError abgebrochen.
     """
     raw = json.dumps(config)
 
@@ -49,7 +70,6 @@ def _resolve_env_vars(config: dict) -> dict:
             raise RuntimeError(f"Umgebungsvariable '{var_name}' nicht gesetzt")
         return value
 
-    # Matcht ${BELIEBIGER_NAME} — Gruppe 1 ist der Variablenname ohne ${}
     return json.loads(re.sub(r"\$\{([^}]+)\}", replacer, raw))
 
 
@@ -65,8 +85,6 @@ def _post(path: str, body: dict) -> dict:
         response.raise_for_status()
         return response.json()
     except requests.HTTPError as e:
-        # HTTPError separat abfangen, weil response.text den Airbyte-Fehlergrund enthält —
-        # bei RequestException gibt es keine Response.
         log.error("HTTP-Fehler %s bei %s: %s", e.response.status_code, path, e.response.text)
         raise
     except requests.RequestException as e:
@@ -79,7 +97,6 @@ def get_workspace_id() -> str:
     workspaces = result.get("workspaces", [])
     if not workspaces:
         raise RuntimeError("Kein Airbyte-Workspace gefunden — ist Airbyte gestartet?")
-    # Self-hosted Airbyte hat immer genau einen Workspace.
     workspace_id = workspaces[0]["workspaceId"]
     log.info("Workspace: %s", workspace_id)
     return workspace_id
@@ -88,8 +105,6 @@ def get_workspace_id() -> str:
 def find_source(workspace_id: str, name: str) -> Optional[str]:
     result = _post("sources/list", {"workspaceId": workspace_id})
     for source in result.get("sources", []):
-        # Name ist der Idempotenz-Schlüssel. Airbyte erlaubt Duplikate —
-        # deshalb beim ersten Treffer abbrechen statt alle zu prüfen.
         if source["name"] == name:
             log.info("Source '%s' existiert bereits: %s", name, source["sourceId"])
             return source["sourceId"]
@@ -97,16 +112,16 @@ def find_source(workspace_id: str, name: str) -> Optional[str]:
 
 
 def create_source(workspace_id: str, config: dict) -> str:
-    resolved = _resolve_env_vars(config)
+    """Erstellt eine neue Source. config muss bereits aufgelöst sein (keine ${VAR})."""
     payload = {
         "workspaceId": workspace_id,
-        "name": resolved["name"],
-        "sourceDefinitionId": resolved["sourceDefinitionId"],
-        "connectionConfiguration": resolved["connectionConfiguration"],
+        "name": config["name"],
+        "sourceDefinitionId": config["sourceDefinitionId"],
+        "connectionConfiguration": config["connectionConfiguration"],
     }
     result = _post("sources/create", payload)
     source_id = result["sourceId"]
-    log.info("Source '%s' erstellt: %s", resolved["name"], source_id)
+    log.info("Source '%s' erstellt: %s", config["name"], source_id)
     return source_id
 
 
@@ -120,16 +135,16 @@ def find_destination(workspace_id: str, name: str) -> Optional[str]:
 
 
 def create_destination(workspace_id: str, config: dict) -> str:
-    resolved = _resolve_env_vars(config)
+    """Erstellt eine neue Destination. config muss bereits aufgelöst sein."""
     payload = {
         "workspaceId": workspace_id,
-        "name": resolved["name"],
-        "destinationDefinitionId": resolved["destinationDefinitionId"],
-        "connectionConfiguration": resolved["connectionConfiguration"],
+        "name": config["name"],
+        "destinationDefinitionId": config["destinationDefinitionId"],
+        "connectionConfiguration": config["connectionConfiguration"],
     }
     result = _post("destinations/create", payload)
     dest_id = result["destinationId"]
-    log.info("Destination '%s' erstellt: %s", resolved["name"], dest_id)
+    log.info("Destination '%s' erstellt: %s", config["name"], dest_id)
     return dest_id
 
 
@@ -143,8 +158,7 @@ def find_connection(workspace_id: str, name: str) -> Optional[str]:
 
 
 def create_connection(source_id: str, destination_id: str, config: dict) -> str:
-    # Connection braucht kein workspaceId — Airbyte leitet den Workspace
-    # automatisch aus sourceId und destinationId ab.
+    """Erstellt eine neue Connection. config muss bereits aufgelöst sein."""
     payload = {
         "sourceId": source_id,
         "destinationId": destination_id,
@@ -160,14 +174,25 @@ def create_connection(source_id: str, destination_id: str, config: dict) -> str:
     return conn_id
 
 
-def deploy() -> None:
-    log.info("Airbyte Deploy gestartet — Ziel: %s", AIRBYTE_URL)
+def deploy_pipeline(pipeline: str, workspace_id: str) -> None:
+    """Deployt eine einzelne Pipeline (Source + Destination + Connection).
 
-    source_config = json.loads((CONNECTIONS_DIR / "source_s3_olist.json").read_text())
-    destination_config = json.loads((CONNECTIONS_DIR / "destination_s3_bronze.json").read_text())
-    connection_config = json.loads((CONNECTIONS_DIR / "connection_olist_to_bronze.json").read_text())
+    Convention: source_<pipeline>.json + connection_<pipeline>_to_bronze.json
+    Die Destination (destination_s3_bronze.json) ist für alle Pipelines geteilt.
+    """
+    source_file = CONNECTIONS_DIR / f"source_{pipeline}.json"
+    connection_file = CONNECTIONS_DIR / f"connection_{pipeline}_to_bronze.json"
+    destination_file = CONNECTIONS_DIR / "destination_s3_bronze.json"
 
-    workspace_id = get_workspace_id()
+    if not source_file.exists():
+        raise FileNotFoundError(f"Source-Config nicht gefunden: {source_file.name}")
+    if not connection_file.exists():
+        raise FileNotFoundError(f"Connection-Config nicht gefunden: {connection_file.name}")
+
+    # Alle Configs einmalig auflösen — ${VAR} → echter Wert aus Umgebung
+    source_config = _resolve_env_vars(json.loads(source_file.read_text()))
+    destination_config = _resolve_env_vars(json.loads(destination_file.read_text()))
+    connection_config = _resolve_env_vars(json.loads(connection_file.read_text()))
 
     source_id = find_source(workspace_id, source_config["name"])
     if source_id is None:
@@ -177,15 +202,43 @@ def deploy() -> None:
     if destination_id is None:
         destination_id = create_destination(workspace_id, destination_config)
 
-    # Connection zuletzt: create_connection benötigt source_id UND destination_id.
+    # Connection zuletzt: benötigt source_id UND destination_id
     connection_id = find_connection(workspace_id, connection_config["name"])
     if connection_id is None:
         connection_id = create_connection(source_id, destination_id, connection_config)
 
-    log.info("Deploy abgeschlossen in < 30s.")
-    log.info("  Source:      %s", source_id)
-    log.info("  Destination: %s", destination_id)
-    log.info("  Connection:  %s", connection_id)
+    log.info(
+        "Pipeline '%s' deployed — source: %s | dest: %s | conn: %s",
+        pipeline,
+        source_id,
+        destination_id,
+        connection_id,
+    )
+
+
+def deploy(pipeline: Optional[str] = None) -> None:
+    """Einstiegspunkt: deployt eine oder alle Pipelines.
+
+    Ohne Argument: entdeckt alle source_*.json in airbyte/connections/
+    und deployt jede Pipeline. Idempotent — bereits existierende Ressourcen
+    werden wiederverwendet.
+    """
+    log.info("Airbyte Deploy gestartet — Ziel: %s", AIRBYTE_URL)
+    workspace_id = get_workspace_id()
+
+    if pipeline:
+        deploy_pipeline(pipeline, workspace_id)
+    else:
+        # Konvention: source_<name>.json = eine Pipeline
+        source_files = sorted(CONNECTIONS_DIR.glob("source_*.json"))
+        pipelines = [f.stem.removeprefix("source_") for f in source_files]
+        if not pipelines:
+            raise RuntimeError(f"Keine source_*.json Dateien in {CONNECTIONS_DIR}")
+        log.info("Gefundene Pipelines: %s", pipelines)
+        for p in pipelines:
+            deploy_pipeline(p, workspace_id)
+
+    log.info("Deploy abgeschlossen.")
 
 
 if __name__ == "__main__":
@@ -194,8 +247,10 @@ if __name__ == "__main__":
         format="%(asctime)s [%(levelname)s] %(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S",
     )
+    # Optionaler Pipeline-Name als erstes CLI-Argument
+    pipeline_arg = sys.argv[1] if len(sys.argv) > 1 else None
     try:
-        deploy()
+        deploy(pipeline_arg)
     except Exception as e:
         log.error("Deploy fehlgeschlagen: %s", e)
         sys.exit(1)

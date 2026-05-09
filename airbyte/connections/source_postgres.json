@@ -1,0 +1,14 @@
+{
+  "name": "postgres-${CUSTOMER_ID}",
+  "sourceDefinitionId": "decd338e-5647-4c0b-adf4-da0e75f5a750",
+  "connectionConfiguration": {
+    "host": "${POSTGRES_HOST}",
+    "port": 5432,
+    "database": "${POSTGRES_DATABASE}",
+    "username": "${POSTGRES_USERNAME}",
+    "password": "${POSTGRES_PASSWORD}",
+    "ssl_mode": { "mode": "require" },
+    "replication_method": { "method": "Standard" },
+    "schemas": ["public"]
+  }
+}

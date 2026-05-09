@@ -1,0 +1,26 @@
+{
+  "name": "postgres-${CUSTOMER_ID}-to-bronze",
+  "syncCatalog": {
+    "streams": [
+      {
+        "stream": { "name": "orders" },
+        "config": { "syncMode": "incremental", "destinationSyncMode": "append_dedup" }
+      },
+      {
+        "stream": { "name": "order_items" },
+        "config": { "syncMode": "incremental", "destinationSyncMode": "append_dedup" }
+      },
+      {
+        "stream": { "name": "products" },
+        "config": { "syncMode": "full_refresh", "destinationSyncMode": "overwrite" }
+      },
+      {
+        "stream": { "name": "customers" },
+        "config": { "syncMode": "incremental", "destinationSyncMode": "append_dedup" }
+      }
+    ]
+  },
+  "scheduleType": "cron",
+  "scheduleData": { "cron": { "cronExpression": "0 4 * * *", "cronTimeZone": "Europe/Berlin" } },
+  "status": "active"
+}

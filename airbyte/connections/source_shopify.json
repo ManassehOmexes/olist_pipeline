@@ -1,0 +1,12 @@
+{
+  "name": "shopify-${CUSTOMER_ID}",
+  "sourceDefinitionId": "9da77001-af33-4bcd-be46-6252bf9342b9",
+  "connectionConfiguration": {
+    "shop": "${SHOPIFY_SHOP}",
+    "credentials": {
+      "auth_method": "api_password",
+      "api_password": "${SHOPIFY_API_PASSWORD}"
+    },
+    "start_date": "${SHOPIFY_START_DATE}"
+  }
+}
