@@ -119,6 +119,13 @@ Alle Aussagen stützen sich auf diese offiziellen Quellen. Wenn eine Quelle nich
 - [ClickHouse Docs](<https://clickhouse.com/docs>)
 - [Kubernetes Docs](<https://kubernetes.io/docs>)
 
+**Claude Code:**
+
+- [Claude Code Dokumentation](<https://code.claude.com/docs/en/overview>)
+- [Claude Code Quickstart](<https://code.claude.com/docs/en/quickstart>)
+- [Claude Code Best Practices](<https://code.claude.com/docs/en/best-practices>)
+- [Anthropic Blog — How teams use Claude Code](<https://claude.com/blog/how-anthropic-teams-use-claude-code>)
+
 **AWS Dokumentationen:**
 
 - [Amazon S3 Security Best Practices](<https://docs.aws.amazon.com/AmazonS3/latest/userguide/security-best-practices.html>)
