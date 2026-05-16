@@ -237,3 +237,14 @@ Technologien, die sicherstellen dass Daten auch bei KI-Nutzung datenschutzkonfor
 | Sicherheit | VPC, IAM, KMS, TLS | CIS AWS Foundations Benchmark |
 
 **Deployment-Prinzip:** Terraform + Airbyte API = kein manueller Klick. Neue Kundenumgebung in < 1 Tag.
+
+---
+
+## Offene Risiken & Lücken *(zu schließen, wenn die Zeit reif ist)*
+
+| # | Risiko / Lücke | Warum kritisch | Status |
+| --- | --- | --- | --- |
+| 1 | **Pricing fehlt** | Ohne Preismodell kein Geschäft. Einmalig, monatlich, oder beides? Welcher Tier kostet was? | Offen |
+| 2 | **Sales-Zyklus bei KMU ist lang** | KMU erkennen das Problem oft erst nach einem Vorfall oder wenn der Wettbewerb davonzieht. Wie erreichst du sie vorher? (LinkedIn, Kaltakquise, Empfehlungen?) | Offen |
+| 3 | **Kapazität als Solo-Operator** | Wie viele Kunden können gleichzeitig betreut werden? Was passiert wenn Tier-1 bei Kunde A hakt während Kunde B onboarded wird? | Offen |
+| 4 | **Maintenance & On-Call** | Wenn eine Pipeline um 03:00 Uhr fällt — wer ist erreichbar? SLA-Zeiten, On-Call-Modell und Notfall-Prozess müssen definiert werden bevor der erste Kunde live geht. | Offen |
