@@ -21,6 +21,7 @@
       "Bash(git checkout*)",
       "Bash(git pull)",
       "Bash(git push)",
+      "Bash(git mv*)",
       "Bash(git branch*)",
       "Bash(docker compose up*)",
       "Bash(docker compose down*)",
@@ -60,6 +61,19 @@
     ]
   },
   "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/check_python_syntax.sh",
+            "timeout": 10,
+            "statusMessage": "Checking Python syntax..."
+          }
+        ]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Write|Edit",

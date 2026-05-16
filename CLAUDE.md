@@ -59,6 +59,9 @@ Methodik: Agile CRISP-DM Hybrid (Phase 0–6, Sprint-basiert)
 - Container:        Docker · Amazon ECR · Amazon EKS
 - Sicherheit:       VPC mit privaten Subnetzen · Firewall · AWS IAM Best Practices
                     CIS AWS Foundations Benchmark · GDPR-Konformität via AWS
+- Reverse ETL:      Custom AWS Lambda → Slack / E-Mail / CRM
+- AI Layer:         dbt Semantic Layer (MetricFlow) + LLM-API (Claude API)
+- PETs:             AWS Macie · dbt mask_pii() Makro · Redshift Column Security
 - Sprache:          Python 3.11, SQL
 
 ## Wissensbasis / Referenzquellen
@@ -267,6 +270,55 @@ DRY-Status: ✅ Gut umgesetzt
 - dbt: `ref()` / `source()` durchgehend, kein hardcoded Schema
 - Python: `run_pipeline.py` als Single Entry Point für GE → dbt
 
+### Phase 7 — dbt Semantic Layer / MetricFlow *(nächster Sprint)*
+
+Was: Die 6 KPIs als `semantic_model` + `metric` YAML definieren — per `dbt sl query` abfragbar.
+Warum: Semantic Layer = Single Source of Truth für KPIs. Pflicht-Fundament für AI Layer (Phase 10).
+
+Neue Dateien:
+
+- `dbt/models/marts/semantic_model_sales.yml`
+- `dbt/models/marts/semantic_model_delivery.yml`
+- `dbt/models/marts/semantic_model_reviews.yml`
+- `dbt/models/marts/metrics.yml`
+
+### Phase 8 — Privacy Layer (PETs + DSGVO Art. 25)
+
+Was: Technische Datenschutzmaßnahmen direkt in der Transformation verankern.
+
+Komponenten:
+
+- `dbt/macros/mask_pii.sql` — PII-Felder (Namen, E-Mails, Adressen) in Staging maskieren
+- Redshift Column-Level Security (`GRANT SELECT (col) ON ... TO ...`)
+- AWS Macie für automatischen PII-Scan in S3 Bronze (Terraform-Modul, optional)
+- RUNBOOK.md: DSGVO Art. 25 Compliance-Nachweis-Abschnitt
+
+### Phase 9 — Reverse ETL
+
+Was: Verarbeitete KPIs aus Redshift zurück in Business-Tools pushen.
+
+Empfehlung Portfolio: AWS Lambda + SNS (Option B) — kein Vendor Lock-in, volle DSGVO-Kontrolle.
+
+Neue Dateien:
+
+- `airflow/dags/olist_reverse_etl.py` — DAG triggert Lambda nach dbt run
+- `terraform/modules/reverse_etl/main.tf` — Lambda + SNS-Konfiguration
+
+### Phase 10 — AI Integration Layer
+
+Was: Natürlichsprachliche KPI-Abfragen auf Basis des Semantic Layer — DSGVO-konform.
+
+```text
+User-Frage (NL) → LLM (Claude API) → MetricFlow Query → Redshift → Antwort
+                                           ↑
+                                Daten sind maskiert (Phase 8)
+```
+
+Use Case: `"Was war mein umsatzstärkstes Produkt letzten Monat?"` → automatische Antwort.
+Neue Datei: `scripts/ai_query.py` — CLI-Wrapper für NL-Abfragen
+
+---
+
 ### Lambda-Architektur — Optionales Add-on (Speed Layer)
 
 Standard-Stack = Batch Layer. Kunden die Echtzeit benötigen erhalten zusätzlich den Speed Layer:
@@ -396,6 +448,8 @@ Airbyte hat eine REST-API — wir können Source, Destination und Connection per
 **Ergebnis:** `python scripts/airbyte_deploy.py` richtet alle Airbyte-Connections in < 30 Sekunden ein.
 
 ### Reproduzierbarkeit — Template-Strategie
+
+Zielkunden: KMU 10–500 Mitarbeiter ohne internes Data Team. Primärproblem: Datenparalyse. Kernwert: Data Intelligence als Wettbewerbsvorteil.
 
 - Terraform Module parametrisiert: Bucket-Name, Region, Environment als Variable
 - dbt als Template: nur sources.yml + Staging-Modelle pro Kunde tauschen
