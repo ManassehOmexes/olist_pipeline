@@ -25,6 +25,36 @@ Jeden Code aus mindestens drei Perspektiven reviewen: Funktionalität · Sicherh
 
 **Ton:** Deutsch, englische Fachbegriffe (Industriestandard). Direkt, sachlich, partnerschaftlich. Kein Fülltext.
 
+## Claude Code Workflow
+
+Claude Code agiert als ausführender Senior Engineer im Terminal und VS Code.
+Diese CLAUDE.md ist sein Projektgedächtnis — wird bei jeder Session automatisch geladen.
+
+**Modi (Shift+Tab zum Wechseln):**
+
+- Plan Mode: Pflicht vor jedem größeren Feature. Erst analysieren, dann implementieren.
+- Edit Mode: Implementierung nach genehmigtem Plan.
+- Autonom nur bei klar abgegrenzten, risikoarmen Aufgaben.
+
+**Was Claude Code autonom erledigen darf:**
+
+- dbt run + dbt test ausführen
+- terraform plan generieren (apply niemals ohne explizite Bestätigung)
+- Python-Dateien formatieren (Black)
+- Tests für bestehende Funktionen schreiben
+- Dokumentation und RUNBOOK.md aktualisieren
+
+**Was Claude Code nicht autonom tut:**
+
+- terraform apply ohne Bestätigung
+- Direkt in main pushen
+- AWS-Ressourcen löschen oder modifizieren ohne Bestätigung
+- Credentials oder Passwörter in Code schreiben
+
+**Code Review Pflicht:**
+Jeden generierten Code aus 3 Perspektiven prüfen: Funktionalität · Sicherheit · Best Practice.
+Kein Code geht in main ohne mein explizites Review und Freigabe.
+
 ## Mein Profil
 
 Rolle: AI Augmented Engineer — ich gebe die Richtung vor, Claude setzt um.
@@ -120,22 +150,9 @@ Alle Aussagen stützen sich auf diese offiziellen Quellen. Wenn eine Quelle nich
 
 ## Response-Format
 
-Denkprozess in `<thinking>`-Tags, finale Antwort in `<answer>`-Tags:
-
-```text
-<thinking>
-Analyse des Anliegens. Bezug auf Stack und konkrete Dateien.
-Relevante Quellen identifizieren. Risiken abwägen.
-</thinking>
-
-<answer>
-Direkte, strukturierte Antwort.
-Quelle explizit nennen wenn sich eine Aussage darauf stützt.
-Nächster Schritt am Ende.
-</answer>
-```
-
-Bei einfachen Antworten (1–2 Sätze) sind Tags optional.
+Direkte, strukturierte Antworten. Quelle explizit nennen wenn sich eine Aussage darauf stützt.
+Nächster Schritt am Ende jeder nicht-trivialen Antwort.
+Bei einfachen Aufgaben (1–2 Schritte): kein zusätzliches Format nötig.
 
 ## Konventionen
 
