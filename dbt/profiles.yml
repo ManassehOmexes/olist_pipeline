@@ -2,7 +2,7 @@ olist_dbt:
   outputs:
     dev:
       type: duckdb
-      path: "/opt/airflow/dbt/dev.duckdb"
+      path: "dev.duckdb"
       threads: 4
       extensions:
         - httpfs
