@@ -28,6 +28,13 @@ resource "aws_s3_bucket" "data_lake" {
   tags = merge(var.common_tags, {
     Name = local.bucket_name
   })
+
+  # object_lock_enabled kann auf bestehenden Buckets nicht nachträglich
+  # aktiviert werden (AWS-Einschränkung, erzwingt sonst Bucket-Replacement).
+  # Neudeploys erhalten object_lock_enabled = true beim Erstellen.
+  lifecycle {
+    ignore_changes = [object_lock_enabled]
+  }
 }
 
 # Versionierung: Bei Fehlern kann man zu einem früheren Stand zurück
