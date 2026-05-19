@@ -173,6 +173,20 @@ resource "aws_s3_bucket_public_access_block" "replica" {
   restrict_public_buckets = true
 }
 
+# Verschlüsselung: Replica-Bucket erhält eigene Default-Encryption (Defense-in-Depth)
+# CRR repliziert verschlüsselte Objekte verschlüsselt — aber direkte Schreibzugriffe
+# im Recovery-Szenario würden ohne Default-Encryption unverschlüsselt landen.
+resource "aws_s3_bucket_server_side_encryption_configuration" "replica" {
+  bucket   = aws_s3_bucket.replica.id
+  provider = aws.replica
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm = "AES256"
+    }
+  }
+}
+
 # IAM Role: erlaubt dem S3-Service das Kopieren von Objekten zwischen Buckets
 resource "aws_iam_role" "s3_replication" {
   name = "${var.project}-s3-replication-${var.environment}"
