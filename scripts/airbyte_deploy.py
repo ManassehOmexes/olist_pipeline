@@ -1,23 +1,29 @@
 """
-Deployt Airbyte Pipelines per API — idempotent und generisch.
+Deployt Airbyte Pipelines per API — deklarativ, idempotent, upsert-fähig.
 
 Jede Pipeline besteht aus drei Dateien in airbyte/connections/:
     source_<pipeline>.json
     connection_<pipeline>_to_bronze.json
     destination_s3_bronze.json   (geteilt, einmal pro Environment)
 
-Idempotent: bestehende Ressourcen werden wiederverwendet, nicht neu erstellt.
+Verhalten (Upsert):
+    - Ressource existiert nicht  → wird erstellt
+    - Ressource existiert, Config hat sich geändert → wird aktualisiert
+    - Ressource existiert, Config identisch          → wird übersprungen (kein API-Call)
+    - Connection verweist auf falsche IDs            → wird aktualisiert
 
 Voraussetzung: pip install requests
 
 Verwendung:
-    # Alle Pipelines deployen (entdeckt source_*.json automatisch)
+    # Alle Pipelines deployen
     python scripts/airbyte_deploy.py
 
     # Einzelne Pipeline deployen
     python scripts/airbyte_deploy.py shopify
-    python scripts/airbyte_deploy.py olist
-    python scripts/airbyte_deploy.py postgres
+
+    # Dry-Run: zeigt Plan ohne Änderungen
+    python scripts/airbyte_deploy.py --dry-run
+    python scripts/airbyte_deploy.py shopify --dry-run
 
 Umgebungsvariablen (Pflicht):
     AIRBYTE_URL            Airbyte API Basis-URL (default: http://localhost:8006)
@@ -56,11 +62,7 @@ CONNECTIONS_DIR = Path(__file__).parent.parent / "airbyte" / "connections"
 
 
 def _resolve_env_vars(config: dict) -> dict:
-    """Ersetzt ${VAR}-Platzhalter durch Umgebungsvariablen.
-
-    Secrets stehen nie im Config-File — nur als Platzhalter.
-    Fehlt eine Variable, wird deploy() mit RuntimeError abgebrochen.
-    """
+    """Ersetzt ${VAR}-Platzhalter durch Umgebungsvariablen."""
     raw = json.dumps(config)
 
     def replacer(match: re.Match) -> str:
@@ -92,6 +94,17 @@ def _post(path: str, body: dict) -> dict:
         raise
 
 
+def _configs_equal(desired: dict, actual: dict) -> bool:
+    """Prüft ob zwei connectionConfiguration-Dicts inhaltlich identisch sind.
+
+    Ignoriert Felder die Airbyte intern hinzufügt (z.B. _type, airbyte_*).
+    """
+    def _strip_internal(d: dict) -> dict:
+        return {k: v for k, v in d.items() if not k.startswith("_") and not k.startswith("airbyte_")}
+
+    return _strip_internal(desired) == _strip_internal(actual)
+
+
 def get_workspace_id() -> str:
     result = _post("workspaces/list", {})
     workspaces = result.get("workspaces", [])
@@ -102,84 +115,133 @@ def get_workspace_id() -> str:
     return workspace_id
 
 
-def find_source(workspace_id: str, name: str) -> Optional[str]:
+def upsert_source(workspace_id: str, config: dict, dry_run: bool = False) -> str:
+    """Erstellt die Source oder aktualisiert sie wenn die Config abweicht."""
     result = _post("sources/list", {"workspaceId": workspace_id})
     for source in result.get("sources", []):
-        if source["name"] == name:
-            log.info("Source '%s' existiert bereits: %s", name, source["sourceId"])
-            return source["sourceId"]
-    return None
+        if source["name"] == config["name"]:
+            source_id = source["sourceId"]
+            if _configs_equal(config["connectionConfiguration"], source.get("connectionConfiguration", {})):
+                log.info("Source '%s' unverändert — kein Update nötig", config["name"])
+            else:
+                log.info("Source '%s' hat Config-Drift — wird aktualisiert", config["name"])
+                if not dry_run:
+                    _post("sources/update", {
+                        "sourceId": source_id,
+                        "name": config["name"],
+                        "connectionConfiguration": config["connectionConfiguration"],
+                    })
+            return source_id
 
-
-def create_source(workspace_id: str, config: dict) -> str:
-    """Erstellt eine neue Source. config muss bereits aufgelöst sein (keine ${VAR})."""
-    payload = {
+    log.info("Source '%s' nicht gefunden — wird erstellt", config["name"])
+    if dry_run:
+        return "dry-run-source-id"
+    result = _post("sources/create", {
         "workspaceId": workspace_id,
         "name": config["name"],
         "sourceDefinitionId": config["sourceDefinitionId"],
         "connectionConfiguration": config["connectionConfiguration"],
-    }
-    result = _post("sources/create", payload)
+    })
     source_id = result["sourceId"]
     log.info("Source '%s' erstellt: %s", config["name"], source_id)
     return source_id
 
 
-def find_destination(workspace_id: str, name: str) -> Optional[str]:
+def upsert_destination(workspace_id: str, config: dict, dry_run: bool = False) -> str:
+    """Erstellt die Destination oder aktualisiert sie wenn die Config abweicht."""
     result = _post("destinations/list", {"workspaceId": workspace_id})
     for dest in result.get("destinations", []):
-        if dest["name"] == name:
-            log.info("Destination '%s' existiert bereits: %s", name, dest["destinationId"])
-            return dest["destinationId"]
-    return None
+        if dest["name"] == config["name"]:
+            dest_id = dest["destinationId"]
+            if _configs_equal(config["connectionConfiguration"], dest.get("connectionConfiguration", {})):
+                log.info("Destination '%s' unverändert — kein Update nötig", config["name"])
+            else:
+                log.info("Destination '%s' hat Config-Drift — wird aktualisiert", config["name"])
+                if not dry_run:
+                    _post("destinations/update", {
+                        "destinationId": dest_id,
+                        "name": config["name"],
+                        "connectionConfiguration": config["connectionConfiguration"],
+                    })
+            return dest_id
 
-
-def create_destination(workspace_id: str, config: dict) -> str:
-    """Erstellt eine neue Destination. config muss bereits aufgelöst sein."""
-    payload = {
+    log.info("Destination '%s' nicht gefunden — wird erstellt", config["name"])
+    if dry_run:
+        return "dry-run-destination-id"
+    result = _post("destinations/create", {
         "workspaceId": workspace_id,
         "name": config["name"],
         "destinationDefinitionId": config["destinationDefinitionId"],
         "connectionConfiguration": config["connectionConfiguration"],
-    }
-    result = _post("destinations/create", payload)
+    })
     dest_id = result["destinationId"]
     log.info("Destination '%s' erstellt: %s", config["name"], dest_id)
     return dest_id
 
 
-def find_connection(workspace_id: str, name: str) -> Optional[str]:
-    result = _post("connections/list", {"workspaceId": workspace_id})
+def upsert_connection(
+    source_id: str,
+    destination_id: str,
+    config: dict,
+    dry_run: bool = False,
+) -> str:
+    """Erstellt die Connection oder aktualisiert sie wenn Config oder IDs abweichen."""
+    result = _post("connections/list", {"sourceId": source_id})
     for conn in result.get("connections", []):
-        if conn["name"] == name:
-            log.info("Connection '%s' existiert bereits: %s", name, conn["connectionId"])
-            return conn["connectionId"]
-    return None
+        if conn["name"] == config["name"]:
+            conn_id = conn["connectionId"]
+            ids_match = (
+                conn.get("sourceId") == source_id
+                and conn.get("destinationId") == destination_id
+            )
+            catalog_match = conn.get("syncCatalog") == config["syncCatalog"]
+            schedule_match = (
+                conn.get("scheduleType") == config["scheduleType"]
+                and conn.get("scheduleData") == config.get("scheduleData")
+            )
+            if ids_match and catalog_match and schedule_match:
+                log.info("Connection '%s' unverändert — kein Update nötig", config["name"])
+            else:
+                reasons = []
+                if not ids_match:
+                    reasons.append("Source/Destination-IDs")
+                if not catalog_match:
+                    reasons.append("syncCatalog")
+                if not schedule_match:
+                    reasons.append("Schedule")
+                log.info("Connection '%s' hat Drift (%s) — wird aktualisiert", config["name"], ", ".join(reasons))
+                if not dry_run:
+                    _post("connections/update", {
+                        "connectionId": conn_id,
+                        "sourceId": source_id,
+                        "destinationId": destination_id,
+                        "name": config["name"],
+                        "syncCatalog": config["syncCatalog"],
+                        "scheduleType": config["scheduleType"],
+                        "scheduleData": config.get("scheduleData"),
+                        "status": config["status"],
+                    })
+            return conn_id
 
-
-def create_connection(source_id: str, destination_id: str, config: dict) -> str:
-    """Erstellt eine neue Connection. config muss bereits aufgelöst sein."""
-    payload = {
+    log.info("Connection '%s' nicht gefunden — wird erstellt", config["name"])
+    if dry_run:
+        return "dry-run-connection-id"
+    result = _post("connections/create", {
         "sourceId": source_id,
         "destinationId": destination_id,
         "name": config["name"],
         "syncCatalog": config["syncCatalog"],
         "scheduleType": config["scheduleType"],
-        "scheduleData": config["scheduleData"],
+        "scheduleData": config.get("scheduleData"),
         "status": config["status"],
-    }
-    result = _post("connections/create", payload)
+    })
     conn_id = result["connectionId"]
     log.info("Connection '%s' erstellt: %s", config["name"], conn_id)
     return conn_id
 
 
-def deploy_pipeline(pipeline: str, workspace_id: str) -> None:
-    """Deployt eine einzelne Pipeline (Source + Destination + Connection).
-
-    Convention: source_<pipeline>.json + connection_<pipeline>_to_bronze.json
-    Die Destination (destination_s3_bronze.json) ist für alle Pipelines geteilt.
-    """
+def deploy_pipeline(pipeline: str, workspace_id: str, dry_run: bool = False) -> None:
+    """Deployt eine einzelne Pipeline (Source + Destination + Connection) per Upsert."""
     source_file = CONNECTIONS_DIR / f"source_{pipeline}.json"
     connection_file = CONNECTIONS_DIR / f"connection_{pipeline}_to_bronze.json"
     destination_file = CONNECTIONS_DIR / "destination_s3_bronze.json"
@@ -189,56 +251,42 @@ def deploy_pipeline(pipeline: str, workspace_id: str) -> None:
     if not connection_file.exists():
         raise FileNotFoundError(f"Connection-Config nicht gefunden: {connection_file.name}")
 
-    # Alle Configs einmalig auflösen — ${VAR} → echter Wert aus Umgebung
     source_config = _resolve_env_vars(json.loads(source_file.read_text()))
     destination_config = _resolve_env_vars(json.loads(destination_file.read_text()))
     connection_config = _resolve_env_vars(json.loads(connection_file.read_text()))
 
-    source_id = find_source(workspace_id, source_config["name"])
-    if source_id is None:
-        source_id = create_source(workspace_id, source_config)
-
-    destination_id = find_destination(workspace_id, destination_config["name"])
-    if destination_id is None:
-        destination_id = create_destination(workspace_id, destination_config)
-
-    # Connection zuletzt: benötigt source_id UND destination_id
-    connection_id = find_connection(workspace_id, connection_config["name"])
-    if connection_id is None:
-        connection_id = create_connection(source_id, destination_id, connection_config)
+    source_id = upsert_source(workspace_id, source_config, dry_run)
+    destination_id = upsert_destination(workspace_id, destination_config, dry_run)
+    upsert_connection(source_id, destination_id, connection_config, dry_run)
 
     log.info(
-        "Pipeline '%s' deployed — source: %s | dest: %s | conn: %s",
+        "%sPipeline '%s' — source: %s | dest: %s",
+        "[DRY-RUN] " if dry_run else "",
         pipeline,
         source_id,
         destination_id,
-        connection_id,
     )
 
 
-def deploy(pipeline: Optional[str] = None) -> None:
-    """Einstiegspunkt: deployt eine oder alle Pipelines.
-
-    Ohne Argument: entdeckt alle source_*.json in airbyte/connections/
-    und deployt jede Pipeline. Idempotent — bereits existierende Ressourcen
-    werden wiederverwendet.
-    """
+def deploy(pipeline: Optional[str] = None, dry_run: bool = False) -> None:
+    """Einstiegspunkt: deployt eine oder alle Pipelines per Upsert."""
+    if dry_run:
+        log.info("=== DRY-RUN — keine Änderungen werden durchgeführt ===")
     log.info("Airbyte Deploy gestartet — Ziel: %s", AIRBYTE_URL)
     workspace_id = get_workspace_id()
 
     if pipeline:
-        deploy_pipeline(pipeline, workspace_id)
+        deploy_pipeline(pipeline, workspace_id, dry_run)
     else:
-        # Konvention: source_<name>.json = eine Pipeline
         source_files = sorted(CONNECTIONS_DIR.glob("source_*.json"))
         pipelines = [f.stem.removeprefix("source_") for f in source_files]
         if not pipelines:
             raise RuntimeError(f"Keine source_*.json Dateien in {CONNECTIONS_DIR}")
         log.info("Gefundene Pipelines: %s", pipelines)
         for p in pipelines:
-            deploy_pipeline(p, workspace_id)
+            deploy_pipeline(p, workspace_id, dry_run)
 
-    log.info("Deploy abgeschlossen.")
+    log.info("%sDeploy abgeschlossen.", "[DRY-RUN] " if dry_run else "")
 
 
 if __name__ == "__main__":
@@ -247,10 +295,11 @@ if __name__ == "__main__":
         format="%(asctime)s [%(levelname)s] %(message)s",
         datefmt="%Y-%m-%dT%H:%M:%S",
     )
-    # Optionaler Pipeline-Name als erstes CLI-Argument
-    pipeline_arg = sys.argv[1] if len(sys.argv) > 1 else None
+    args = [a for a in sys.argv[1:] if a != "--dry-run"]
+    dry_run_flag = "--dry-run" in sys.argv[1:]
+    pipeline_arg = args[0] if args else None
     try:
-        deploy(pipeline_arg)
+        deploy(pipeline_arg, dry_run=dry_run_flag)
     except Exception as e:
         log.error("Deploy fehlgeschlagen: %s", e)
         sys.exit(1)
