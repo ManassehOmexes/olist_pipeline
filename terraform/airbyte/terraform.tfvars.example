@@ -1,0 +1,35 @@
+# Workspace ID einmalig ermitteln (Airbyte muss laufen):
+# curl -s -u airbyte:password http://localhost:8006/api/v1/workspaces/list \
+#   | jq -r '.workspaces[0].workspaceId'
+airbyte_workspace_id = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+
+# Airbyte Verbindung (defaults passen fuer lokale Docker-Installation)
+# airbyte_url      = "http://localhost:8006"
+# airbyte_username = "airbyte"
+# airbyte_password = "password"
+
+# AWS (Credentials besser per Env-Var: TF_VAR_aws_access_key_id usw.)
+aws_region            = "eu-central-1"
+s3_bucket_name        = "olist-data-lake-dev"
+# aws_access_key_id     = "AKIA..."
+# aws_secret_access_key = "..."
+
+# Kundenbezeichner (wird in Source/Connection-Namen verwendet)
+customer_id = "olist"
+
+# -------------------------------------------------------
+# Shopify (optional) — enable_shopify = true zum Aktivieren
+# -------------------------------------------------------
+enable_shopify = false
+# shopify_shop         = "kunde.myshopify.com"
+# shopify_api_password = "shpat_..."
+# shopify_start_date   = "2023-01-01T00:00:00Z"
+
+# -------------------------------------------------------
+# Postgres (optional) — enable_postgres = true zum Aktivieren
+# -------------------------------------------------------
+enable_postgres = false
+# postgres_host     = "db.kunde.internal"
+# postgres_database = "ecommerce"
+# postgres_username = "airbyte"
+# postgres_password = "..."
