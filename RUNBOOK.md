@@ -274,3 +274,74 @@ python great_expectations/validate_silver.py
 # Export Gold to CSV for Power BI
 python scripts/export_to_csv.py
 ```
+
+---
+
+## DSGVO Art. 25 — Privacy by Design
+
+Dieses Kapitel dokumentiert die technischen Datenschutzmaßnahmen gemäß DSGVO Art. 25
+(Datenschutz durch Technikgestaltung und durch datenschutzfreundliche Voreinstellungen).
+
+### Grundsatz
+
+Personenbezogene Daten werden **vor** dem Eintritt in die Gold-Schicht maskiert.
+Das Makro `mask_pii()` (dbt/macros/mask_pii.sql) wird direkt in den Staging-Modellen angewendet —
+kein Downstream-Modell erhält unbehandelte PII.
+
+### Maskierte Felder
+
+| Modell | Feld | Methode | Begründung |
+| ------ | ---- | ------- | ---------- |
+| `stg_customers` | `customer_unique_id` | MD5-Hash | Persistenter Kundenidentifier — Pseudonymisierung |
+| `stg_customers` | `customer_zip_code_prefix` | Trunkierung (3 Stellen) | PLZ-Generalisierung — Bundesstaat reicht für KPI-Analyse |
+| `stg_sellers` | `seller_zip_code_prefix` | Trunkierung (3 Stellen) | Gleiche Begründung wie customer_zip |
+| `stg_geolocation` | `latitude` / `longitude` | Runden (2 Dezimalstellen) | ~1 km Genauigkeit statt ~10 m — k-Anonymität |
+
+### Methoden des mask_pii()-Makros
+
+```sql
+-- Pseudonymisierung (konsistenter Hash, JOIN-sicher)
+{{ mask_pii('customer_unique_id', 'hash') }}
+-- → MD5(CAST(customer_unique_id AS VARCHAR))
+
+-- Generalisierung PLZ
+{{ mask_pii('customer_zip_code_prefix', 'truncate_zip') }}
+-- → LEFT(CAST(customer_zip_code_prefix AS VARCHAR), 3)
+
+-- Koordinaten-Vergröberung
+{{ mask_pii('AVG(geolocation_lat)', 'round_coords') }}
+-- → ROUND(CAST(AVG(geolocation_lat) AS DOUBLE), 2)
+```
+
+### Redshift Column-Level Security (Referenz)
+
+Für Production-Deployments auf Redshift Serverless:
+
+```sql
+-- Analyst-Rolle: darf keine customer_unique_id lesen
+REVOKE SELECT ON TABLE staging.stg_customers FROM analyst_role;
+GRANT SELECT (customer_id, customer_zip_code_prefix, customer_city, customer_state)
+    ON TABLE staging.stg_customers TO analyst_role;
+
+-- Nur Data Engineers mit Vollzugriff
+GRANT SELECT ON TABLE staging.stg_customers TO data_engineer_role;
+```
+
+### AWS Macie (optional)
+
+AWS Macie scannt S3 Bronze automatisch auf PII-Muster (Namen, E-Mails, Kreditkartennummern).
+Aktivierung via Terraform-Modul (optional, nicht im aktuellen Stack enthalten):
+
+```hcl
+resource "aws_macie2_account" "olist" {
+  finding_publishing_frequency = "FIFTEEN_MINUTES"
+  status                       = "ENABLED"
+}
+```
+
+### Compliance-Nachweis
+
+- Art. 25 Abs. 1: Technische Maßnahmen implementiert (Pseudonymisierung, Generalisierung)
+- Art. 25 Abs. 2: Datenschutzfreundliche Voreinstellungen — minimale Datenmenge in Gold-Schicht
+- Art. 32 Abs. 1 lit. a: Verschlüsselung at rest (Redshift KMS) + in transit (TLS) via AWS
+- Nachweis-Dokument: dieses RUNBOOK.md, versioniert in Git

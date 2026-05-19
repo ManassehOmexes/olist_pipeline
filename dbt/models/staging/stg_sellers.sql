@@ -6,7 +6,7 @@ WITH source AS (
 
 SELECT
     seller_id,
-    seller_zip_code_prefix,
+    {{ mask_pii('seller_zip_code_prefix', 'truncate_zip') }} AS seller_zip_code_prefix,
     seller_city,
     seller_state
 FROM source
