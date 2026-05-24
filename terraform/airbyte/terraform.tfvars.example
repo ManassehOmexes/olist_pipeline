@@ -1,7 +1,7 @@
 # Workspace ID einmalig ermitteln (Airbyte muss laufen):
 # curl -s -u airbyte:password http://localhost:8006/api/v1/workspaces/list \
 #   | jq -r '.workspaces[0].workspaceId'
-airbyte_workspace_id = "XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+airbyte_workspace_id = "63cb99a0-5212-4754-b804-291c2afe5d14"
 
 # Airbyte Verbindung (defaults passen fuer lokale Docker-Installation)
 # airbyte_url      = "http://localhost:8006"
