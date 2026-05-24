@@ -62,6 +62,28 @@ resource "aws_iam_role_policy_attachment" "glue_s3" {
   policy_arn = aws_iam_policy.glue_s3.arn
 }
 
+data "aws_iam_policy_document" "glue_secrets" {
+  statement {
+    sid     = "SecretsManagerRead"
+    actions = ["secretsmanager:GetSecretValue"]
+    resources = [
+      "arn:aws:secretsmanager:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:secret:${var.project}/redshift/*"
+    ]
+  }
+}
+
+resource "aws_iam_policy" "glue_secrets" {
+  name        = "${var.project}-glue-secrets-policy-${var.environment}"
+  description = "Erlaubt Glue das Redshift-Secret aus Secrets Manager zu lesen"
+  policy      = data.aws_iam_policy_document.glue_secrets.json
+  tags        = var.common_tags
+}
+
+resource "aws_iam_role_policy_attachment" "glue_secrets" {
+  role       = aws_iam_role.glue.name
+  policy_arn = aws_iam_policy.glue_secrets.arn
+}
+
 
 # -------------------------------------------------------
 # 2. AIRFLOW ROLLE

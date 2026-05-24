@@ -1,8 +1,11 @@
 from datetime import datetime, timedelta
+import json
 import logging
 import subprocess
 import sys
 import os
+
+import boto3
 
 from airflow import DAG
 from airflow.operators.python import PythonOperator
@@ -18,6 +21,16 @@ default_args = {
 }
 
 ROOT = '/opt/airflow'
+
+
+def _get_redshift_password() -> str:
+    project = os.environ.get('PROJECT', 'olist')
+    environment = os.environ.get('ENVIRONMENT', 'dev')
+    client = boto3.client('secretsmanager')
+    response = client.get_secret_value(
+        SecretId=f"{project}/redshift/admin-password/{environment}"
+    )
+    return json.loads(response['SecretString'])['password']
 
 
 def validate_silver(**context) -> None:
@@ -65,7 +78,7 @@ def run_dbt(command: str, **context) -> None:
             text=True,
             env={
                 **os.environ,
-                'REDSHIFT_PASSWORD': os.environ['REDSHIFT_PASSWORD'],
+                'REDSHIFT_PASSWORD': _get_redshift_password(),
                 # Lineage-Events an Marquez senden (läuft im selben Docker-Netzwerk)
                 'OPENLINEAGE_URL': 'http://marquez:5000',
                 'OPENLINEAGE_NAMESPACE': 'olist-dbt',

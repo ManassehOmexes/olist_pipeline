@@ -1,4 +1,5 @@
 import sys
+import json
 import logging
 import boto3
 import pandas as pd
@@ -12,10 +13,18 @@ logging.basicConfig(
 )
 log = logging.getLogger(__name__)
 
-args = getResolvedOptions(sys.argv, ['JOB_NAME', 'source_bucket', 'target_bucket'])
+args = getResolvedOptions(sys.argv, ['JOB_NAME', 'source_bucket', 'target_bucket', 'project', 'environment'])
 
 SOURCE_BUCKET = args['source_bucket']
 TARGET_BUCKET = args['target_bucket']
+
+
+def get_redshift_secret(project: str, environment: str) -> dict:
+    client = boto3.client('secretsmanager')
+    response = client.get_secret_value(
+        SecretId=f"{project}/redshift/admin-password/{environment}"
+    )
+    return json.loads(response['SecretString'])
 
 
 def read_csv_from_s3(bucket: str, table_name: str) -> pd.DataFrame:
