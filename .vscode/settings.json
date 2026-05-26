@@ -1,4 +1,6 @@
 {
+    "python.defaultInterpreterPath": ".venv\\Scripts\\python.exe",
+    "python.terminal.activateEnvironment": true,
     "sqltools.useNodeRuntime": true,
     "workbench.editorAssociations": {
         "*.copilotmd": "vscode.markdown.preview.editor",
@@ -12,7 +14,7 @@
         {
             "alias": "dev",
             "type": "file",
-            "path": "c:\\Users\\User\\Documents\\Projekte\\E-Comm\\ecomm_pipeline\\dbt\\dev.duckdb",
+            "path": "c:\\Projects\\ecomm_pipeline\\dbt\\dev.duckdb",
             "attached": false
         }
     ]

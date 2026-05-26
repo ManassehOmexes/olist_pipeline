@@ -168,7 +168,9 @@ dbt:      stg_ (view) → int_ (ephemeral) → fct_/dim_/kpi_ (table)
           dbt docs generate nach jedem neuen Modell
 Airflow:  owner, retries=3, retry_delay=5min, tags, doc_md Pflicht
           DAG-Namensschema: olist_<schicht>_<aktion>
-Python:   Type hints + Docstrings + Error handling + nur os.environ[] für Credentials
+Python:   Type hints + Docstrings + Error handling + Credentials ausschließlich via
+           AWS Secrets Manager (boto3.client('secretsmanager').get_secret_value())
+           Kein os.environ[] für Passwörter oder Tokens
 S3:       Bronze ist immutable — niemals überschreiben, nur anhängen
           Pfadschema: s3://olist-data-lake/<schicht>/<tabellenname>/
 Terraform: Remote State in S3, common_tags auf allen Ressourcen
