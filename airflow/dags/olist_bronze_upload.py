@@ -2,6 +2,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 import logging
 import os
+import subprocess
+import sys
 
 import boto3
 from airflow import DAG
@@ -57,6 +59,25 @@ def upload_to_s3(file_name: str, **context) -> str:
     return s3_key
 
 
+def run_bronze_validation(**context) -> None:
+    script = '/opt/airflow/great_expectations/validate_bronze.py'
+    try:
+        result = subprocess.run(
+            [sys.executable, script],
+            capture_output=True,
+            text=True,
+            env=os.environ.copy(),
+        )
+        if result.stdout:
+            log.info(result.stdout.strip())
+        if result.returncode != 0:
+            log.error(result.stderr.strip())
+            raise RuntimeError("Bronze Validation fehlgeschlagen — Glue Job wird nicht gestartet")
+    except FileNotFoundError:
+        log.error("validate_bronze.py nicht gefunden unter: %s", script)
+        raise
+
+
 def trigger_glue_job(**context) -> str:
     """Startet den Glue Bronze-to-Silver Job.
 
@@ -97,10 +118,12 @@ with DAG(
 
     1. TaskGroup upload_bronze: Alle 9 CSV Dateien parallel nach S3 Bronze hochladen
        - XCom: s3_key pro Datei gespeichert
-    2. start_glue_job: Glue Job Bronze → Silver triggern
+    2. validate_bronze: Great Expectations prüft alle CSVs auf S3 (Struktur, PK, Row Count)
+       - Schlägt fehl → Glue wird nicht gestartet
+    3. start_glue_job: Glue Job Bronze → Silver triggern
        - XCom: glue_run_id gespeichert
-    3. wait_for_silver: S3KeySensor wartet bis Silver-Parquet erscheint (reschedule mode)
-    4. trigger_silver_to_gold: DAG olist_silver_to_gold wird gestartet
+    4. wait_for_silver: S3KeySensor wartet bis Silver-Parquet erscheint (reschedule mode)
+    5. trigger_silver_to_gold: DAG olist_silver_to_gold wird gestartet
     """,
 ) as dag:
 
@@ -113,6 +136,11 @@ with DAG(
             )
             for f in CSV_FILES
         ]
+
+    validate_bronze = PythonOperator(
+        task_id='validate_bronze',
+        python_callable=run_bronze_validation,
+    )
 
     start_glue = PythonOperator(
         task_id='start_glue_job',
@@ -135,4 +163,4 @@ with DAG(
         wait_for_completion=False,
     )
 
-    upload_group >> start_glue >> wait_for_silver >> trigger_silver_to_gold
+    upload_group >> validate_bronze >> start_glue >> wait_for_silver >> trigger_silver_to_gold
