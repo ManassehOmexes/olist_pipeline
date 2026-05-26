@@ -32,6 +32,20 @@ CSV_FILES = [
     'product_category_name_translation.csv',
 ]
 
+VOLUME_BASELINES: dict[str, int] = {
+    'olist_orders_dataset':              99441,
+    'olist_order_items_dataset':         112650,
+    'olist_order_payments_dataset':      103886,
+    'olist_order_reviews_dataset':       99224,
+    'olist_customers_dataset':           99441,
+    'olist_sellers_dataset':             3095,
+    'olist_products_dataset':            32951,
+    'olist_geolocation_dataset':         1000163,
+    'product_category_name_translation': 71,
+}
+
+VOLUME_THRESHOLD = 0.70
+
 
 def upload_to_s3(file_name: str, **context) -> str:
     """Lädt eine CSV Datei in den S3 Bronze Layer hoch.
@@ -57,6 +71,59 @@ def upload_to_s3(file_name: str, **context) -> str:
 
     context['ti'].xcom_push(key='s3_key', value=s3_key)
     return s3_key
+
+
+def check_volume_anomaly(**context) -> None:
+    """Vergleicht CSV-Zeilenzahlen mit Baseline. Sendet SNS-Alert und wirft Exception bei Anomalie."""
+    region = os.environ['AWS_DEFAULT_REGION']
+    topic_arn = os.environ.get(
+        'SNS_TOPIC_ARN',
+        'arn:aws:sns:eu-central-1:710220507619:olist-alerts-dev',
+    )
+    anomalies: list[str] = []
+
+    for file_name in CSV_FILES:
+        table = file_name.replace('.csv', '')
+        local_path = Path('/opt/airflow/data/raw') / file_name
+        baseline = VOLUME_BASELINES[table]
+
+        try:
+            with open(local_path, 'r', encoding='utf-8') as f:
+                row_count = sum(1 for _ in f) - 1  # Header abziehen
+        except Exception as e:
+            log.error("Datei nicht lesbar: %s — %s", local_path, e)
+            anomalies.append(f"{table}: Datei nicht lesbar ({e})")
+            continue
+
+        ratio = row_count / baseline
+        deviation_pct = (1 - ratio) * 100
+
+        if ratio < VOLUME_THRESHOLD:
+            msg = (
+                f"{table}: erwartet ~{baseline:,}, gefunden {row_count:,} "
+                f"({deviation_pct:.1f}% unter Baseline)"
+            )
+            log.warning("ANOMALIE — %s", msg)
+            anomalies.append(msg)
+        else:
+            log.info("OK — %s: %s Zeilen (%.1f%% der Baseline)", table, f"{row_count:,}", ratio * 100)
+
+    if anomalies:
+        summary = "\n".join(anomalies)
+        try:
+            sns = boto3.client('sns', region_name=region)
+            sns.publish(
+                TopicArn=topic_arn,
+                Subject='[olist] Bronze Volume Anomaly',
+                Message=f"Volume-Anomalien gefunden:\n\n{summary}",
+            )
+            log.info("SNS-Alert gesendet an %s", topic_arn)
+        except Exception as e:
+            log.error("SNS-Publish fehlgeschlagen: %s", e)
+
+        raise RuntimeError(
+            f"Volume Anomaly Check fehlgeschlagen ({len(anomalies)} Tabelle(n)):\n{summary}"
+        )
 
 
 def run_bronze_validation(**context) -> None:
@@ -118,12 +185,14 @@ with DAG(
 
     1. TaskGroup upload_bronze: Alle 9 CSV Dateien parallel nach S3 Bronze hochladen
        - XCom: s3_key pro Datei gespeichert
-    2. validate_bronze: Great Expectations prüft alle CSVs auf S3 (Struktur, PK, Row Count)
+    2. check_volume_anomaly: Zeilenzahl aller CSVs gegen Baseline prüfen (Schwellwert 70%)
+       - Anomalie → SNS-Alert + Abbruch vor GE-Validierung
+    3. validate_bronze: Great Expectations prüft alle CSVs auf S3 (Struktur, PK, Row Count)
        - Schlägt fehl → Glue wird nicht gestartet
-    3. start_glue_job: Glue Job Bronze → Silver triggern
+    4. start_glue_job: Glue Job Bronze → Silver triggern
        - XCom: glue_run_id gespeichert
-    4. wait_for_silver: S3KeySensor wartet bis Silver-Parquet erscheint (reschedule mode)
-    5. trigger_silver_to_gold: DAG olist_silver_to_gold wird gestartet
+    5. wait_for_silver: S3KeySensor wartet bis Silver-Parquet erscheint (reschedule mode)
+    6. trigger_silver_to_gold: DAG olist_silver_to_gold wird gestartet
     """,
 ) as dag:
 
@@ -136,6 +205,11 @@ with DAG(
             )
             for f in CSV_FILES
         ]
+
+    check_volume = PythonOperator(
+        task_id='check_volume_anomaly',
+        python_callable=check_volume_anomaly,
+    )
 
     validate_bronze = PythonOperator(
         task_id='validate_bronze',
@@ -163,4 +237,4 @@ with DAG(
         wait_for_completion=False,
     )
 
-    upload_group >> validate_bronze >> start_glue >> wait_for_silver >> trigger_silver_to_gold
+    upload_group >> check_volume >> validate_bronze >> start_glue >> wait_for_silver >> trigger_silver_to_gold
