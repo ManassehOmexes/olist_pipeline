@@ -1,0 +1,38 @@
+name: CI — dbt test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  dbt_test:
+    name: dbt run + dbt test (DuckDB dev)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Repository auschecken
+        uses: actions/checkout@v4
+
+      - name: Python 3.11 einrichten
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: dbt installieren
+        run: pip install --upgrade pip dbt-core dbt-duckdb
+
+      - name: dbt Pakete installieren
+        working-directory: dbt
+        run: dbt deps
+
+      - name: dbt run + dbt test
+        working-directory: dbt
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+        run: |
+          dbt run --target dev --profiles-dir .
+          dbt test --target dev --profiles-dir .
