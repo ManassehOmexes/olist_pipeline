@@ -146,3 +146,4 @@ KPIs:  Umsatz pro Kategorie · Umsatz pro Region · Ø Lieferdauer ·
 - Kein Code implementieren, den ich nicht vollständig verstehe.
 - Aktiv auf Wissenslücken und Risiken hinweisen — nicht erst wenn gefragt.
 - Konstruktives Feedback + konkrete Verbesserungsvorschläge geben.
+- Gelerntes und Korrekturen: siehe MEMORY.md
