@@ -104,7 +104,7 @@ CRISP-DM Phase 5 (Deployment / DataOps) aktiv. Phase 6 (Übergabe) ausstehend.
 - [x] Bronze Validation Gate: GE-Check nach S3-Upload, vor Glue
 - [x] Volume Anomaly Alert: Row-Count Vergleich nach Upload, SNS bei >30% Abweichung
 - [x] GitHub Actions CI/CD: ci.yml + ci/run_dbt_ci.sh — dbt test bei jedem Push auf main
-- [ ] README.md vollständig: Architekturdiagramm, Screenshots, Setup-Anleitung
+- [x] README.md vollständig: Architekturdiagramm, Screenshots, Setup-Anleitung
 - [ ] Case Study PDF: Problem → Architektur → Ergebnis → Metriken (1 Seite)
 
 **Geplant — Stufe C (später)**
