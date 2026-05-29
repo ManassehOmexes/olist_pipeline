@@ -22,16 +22,16 @@ Production-grade ELT pipeline on AWS using the [Olist Brazilian E-Commerce Datas
 [Kaggle CSV Files]
        │
        ▼ Airflow DAG (Volume Anomaly Check → Bronze Validation)
-[S3 Bronze Layer]  ──── immutable, Object Lock, 30-day WORM
+[S3 Bronze Layer]  ─ immutable, Object Lock, 30-day WORM
        │
        ▼ AWS Glue (Python Shell)
-[S3 Silver Layer]  ──── Parquet, Great Expectations (49 checks)
+[S3 Silver Layer]  ─ Parquet, Great Expectations (49 checks)
        │
        ▼ dbt Core (17 models, 49 tests)
 [Redshift Serverless / DuckDB]
        │
        ▼
-[Power BI Dashboard]  ──── 4 pages, 4 business questions, 6 KPIs
+[Power BI Dashboard]  ─ 4 pages, 4 business questions, 6 KPIs
 ```
 
 **Medallion Architecture:** Bronze (raw, immutable) → Silver (cleaned Parquet) → Gold (business-ready mart tables)
@@ -48,7 +48,7 @@ Production-grade ELT pipeline on AWS using the [Olist Brazilian E-Commerce Datas
 | Bronze Validation Gate | Great Expectations schema + PK checks on all 9 tables before Glue runs |
 | Silver Validation | 49 GE checks after transformation, before dbt |
 | Automated Testing | 49 dbt tests (not_null, unique, relationships) on every push via GitHub Actions |
-| Secrets Management | AWS Secrets Manager — no plaintext credentials anywhere in code |
+| Secrets Management | AWS Secrets Manager - no plaintext credentials anywhere in code |
 | IaC | Full Terraform: S3, IAM, Glue, Redshift, Monitoring, Secrets Manager |
 | State Management | Terraform remote state in S3 + DynamoDB locking |
 | Monitoring | CloudWatch + SNS alerting on Glue failures and data anomalies |
@@ -65,7 +65,7 @@ Production-grade ELT pipeline on AWS using the [Olist Brazilian E-Commerce Datas
 | Orchestration | Apache Airflow 2.x (Docker) |
 | Ingestion | Python + boto3 |
 | Bronze → Silver | AWS Glue (Python Shell) |
-| Silver → Gold | dbt Core — DuckDB (dev) / Redshift Serverless (prod) |
+| Silver → Gold | dbt Core - DuckDB (dev) / Redshift Serverless (prod) |
 | Data Warehouse | AWS Redshift Serverless |
 | Storage | AWS S3 - Medallion Architecture |
 | Data Quality | Great Expectations + dbt Tests + dbt-expectations |
@@ -83,7 +83,7 @@ Production-grade ELT pipeline on AWS using the [Olist Brazilian E-Commerce Datas
 |---|---|---|
 | BQ-01 | Which product categories generate the most revenue? | Revenue per category, MoM growth |
 | BQ-02 | Which regions and markets perform best? | Revenue per state, order density |
-| BQ-03 | How long does delivery take — where are the delays? | Avg. delivery days, late delivery rate % |
+| BQ-03 | How long does delivery take - where are the delays? | Avg. delivery days, late delivery rate % |
 | BQ-04 | How satisfied are customers and what drives reviews? | Avg. review score, delay/rating correlation |
 
 ---
@@ -221,6 +221,6 @@ dbt docs generate && dbt docs serve
 
 ## Dataset
 
-[Olist Brazilian E-Commerce Dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) — Kaggle, CC BY-NC-SA 4.0
+[Olist Brazilian E-Commerce Dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) - Kaggle, CC BY-NC-SA 4.0
 
 ~100,000 orders from 2016 to 2018 across multiple Brazilian marketplaces. 9 source tables.
