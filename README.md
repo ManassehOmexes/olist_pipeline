@@ -207,7 +207,11 @@ dbt docs generate && dbt docs serve
 
 ## Dashboard
 
-*Screenshots — Power BI Desktop*
+<img width="742" height="418" alt="Unternhemensperformance" src="https://github.com/user-attachments/assets/3318892f-8882-4338-8680-170a6fe1a7b5" />
+<img width="734" height="416" alt="Sales" src="https://github.com/user-attachments/assets/f0dfe361-94fe-4bee-8a63-1a59f07436d2" />
+<img width="747" height="416" alt="Regionen" src="https://github.com/user-attachments/assets/cefc5362-c99f-4d20-9380-9ff063a7bcb2" />
+<img width="751" height="417" alt="Lieferung" src="https://github.com/user-attachments/assets/49c22ae7-aa38-47c3-a522-a9cd5de79823" />
+<img width="747" height="419" alt="Bewertungen" src="https://github.com/user-attachments/assets/da7c8401-367a-44e9-8932-8efaef65ebca" />
 
 <!-- Add screenshots here -->
 | Page | Business Question |
