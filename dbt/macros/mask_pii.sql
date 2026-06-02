@@ -4,7 +4,7 @@
     {%- elif method == 'truncate_zip' -%}
         LEFT(CAST({{ column_name }} AS VARCHAR), 3)
     {%- elif method == 'round_coords' -%}
-        ROUND(CAST({{ column_name }} AS DOUBLE), 2)
+        ROUND(CAST({{ column_name }} AS DOUBLE PRECISION), 2)
     {%- else -%}
         {{ exceptions.raise_compiler_error("mask_pii: unknown method '" ~ method ~ "'. Use hash, truncate_zip, or round_coords.") }}
     {%- endif %}
