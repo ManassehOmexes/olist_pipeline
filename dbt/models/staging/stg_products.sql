@@ -11,7 +11,7 @@ translation AS (
 SELECT
     p.product_id,
     p.product_category_name,
-    COALESCE(t.product_category_name_english, p.product_category_name) AS product_category_name_en,
+    {{ initcap_sql("REPLACE(COALESCE(t.product_category_name_english, p.product_category_name), '_', ' ')") }} AS product_category_name_en,
     p.product_weight_g,
     p.product_length_cm,
     p.product_height_cm,
