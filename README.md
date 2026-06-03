@@ -1,131 +1,121 @@
 # Olist E-Commerce Analytics Pipeline
 
-End-to-end ELT pipeline on the [Olist Brazilian E-Commerce Dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) — built as a portfolio project following industry DataOps standards.
+E-commerce companies often struggle to answer fundamental business questions because data is scattered across multiple systems and reports are manually maintained.
 
-![Python](https://img.shields.io/badge/Python-3.11-blue)
-![dbt](https://img.shields.io/badge/dbt-Core-orange)
-![Terraform](https://img.shields.io/badge/Terraform-%3E%3D1.5-purple)
-![CI](https://img.shields.io/github/actions/workflow/status/Omexes/ecomm_pipeline/ci.yml?label=dbt%20tests)
+This project demonstrates how a modern analytics platform can automatically transform raw operational data into reliable business insights.
 
----
+[![CI](https://github.com/ManassehOmexes/olist-analytics-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/ManassehOmexes/olist-analytics-pipeline/actions)
+[![dbt](https://img.shields.io/badge/dbt-17%20models%20%7C%2049%20tests-FF694B?style=flat&logo=dbt&logoColor=white)](https://docs.getdbt.com)
+[![AWS](https://img.shields.io/badge/AWS-Redshift%20%7C%20S3%20%7C%20Glue-FF9900?style=flat&logo=amazon-aws&logoColor=white)](https://aws.amazon.com)
+[![Terraform](https://img.shields.io/badge/IaC-Terraform-5835CC?style=flat&logo=terraform&logoColor=white)](https://www.terraform.io)
+[![License](https://img.shields.io/badge/Dataset-CC%20BY--NC--SA%204.0-lightgrey?style=flat)](https://creativecommons.org/licenses/by-nc-sa/4.0/)
 
-## What this project does
+Production-grade ELT pipeline on AWS using the [Olist Brazilian E-Commerce Dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce). Built to industry standard - automated testing, data quality gates, secrets management, CI/CD, disaster recovery.
 
-Transforms 9 raw CSV files from the Olist Brazilian marketplace (~100k orders, 2016–2018) into a Power BI dashboard answering 4 business questions — fully automated, tested, and deployed on AWS.
-
-**Business Questions answered:**
-
-| # | Question | KPI |
-|---|----------|-----|
-| BQ-01 | Which product categories generate the most revenue? | Revenue per category |
-| BQ-02 | Which regions perform best? | Revenue per state |
-| BQ-03 | How long does delivery take — where are the delays? | Avg. delivery days, late delivery rate |
-| BQ-04 | How satisfied are customers and what drives reviews? | Avg. review score, delay/rating correlation |
+**Business outcome:** Reduced manual reporting effort from hours to minutes while providing daily visibility into revenue, delivery performance and customer satisfaction.
 
 ---
 
 ## Architecture
 
-```mermaid
-flowchart LR
-    A[Kaggle\nCSV Files] -->|Airflow DAG\nolist_bronze_upload| B[S3 Bronze\nImmutable]
-
-    B --> VA[Volume\nAnomaly Check]
-    VA -->|>30% deviation| AL[SNS Alert\n+ DAG stop]
-    VA -->|OK| GE1[Bronze\nValidation GE]
-    GE1 -->|Fail| STOP1[DAG stop]
-    GE1 -->|Pass| C
-
-    B -->|AWS Glue\nbronze_to_silver| C[S3 Silver\nParquet]
-
-    C --> GE2[Silver\nValidation GE]
-    GE2 -->|Fail| STOP2[DAG stop]
-    GE2 -->|Pass| D
-
-    D[dbt Core\nDuckDB dev\nRedshift prod] --> E[Gold Layer\nMart Tables]
-    E --> F[Power BI\nDashboard]
+```
+[Kaggle CSV Files]
+       │
+       ▼ Airflow DAG (Volume Anomaly Check → Bronze Validation)
+[S3 Bronze Layer]  ─ immutable, Object Lock, 30-day WORM
+       │
+       ▼ AWS Glue (Python Shell)
+[S3 Silver Layer]  ─ Parquet, Great Expectations (49 checks)
+       │
+       ▼ dbt Core (17 models, 49 tests)
+[Redshift Serverless / DuckDB]
+       │
+       ▼
+[Power BI Dashboard]  ─ 4 pages, 4 business questions, 6 KPIs
 ```
 
-**Medallion Architecture on AWS S3:**
+**Medallion Architecture:** Bronze (raw, immutable) → Silver (cleaned Parquet) → Gold (business-ready mart tables)
 
-```
-Bronze  →  Raw CSV (immutable, append-only)
-Silver  →  Cleaned Parquet (Glue transformation)
-Gold    →  Aggregated marts (dbt models)
-```
+**Cross-region replication:** S3 Bronze → eu-west-1 replica. RTO < 4h, RPO < 1h.
+
+---
+
+## DataOps Features
+
+| Feature | Implementation |
+|---|---|
+| Volume Anomaly Detection | Row count compared to baseline after every sync. SNS alert + pipeline stop at >30% deviation |
+| Bronze Validation Gate | Great Expectations schema + PK checks on all 9 tables before Glue runs |
+| Silver Validation | 49 GE checks after transformation, before dbt |
+| Automated Testing | 49 dbt tests (not_null, unique, relationships) on every push via GitHub Actions |
+| Secrets Management | AWS Secrets Manager - no plaintext credentials anywhere in code |
+| IaC | Full Terraform: S3, IAM, Glue, Redshift, Monitoring, Secrets Manager |
+| State Management | Terraform remote state in S3 + DynamoDB locking |
+| Monitoring | CloudWatch + SNS alerting on Glue failures and data anomalies |
+| Data Lineage | OpenLineage + Marquez integration |
+| Disaster Recovery | S3 CRR (eu-west-1), Object Lock (COMPLIANCE 30 days) |
+| GDPR Compliance | PII masking via dbt macro, data retention policies, encryption at rest |
 
 ---
 
 ## Tech Stack
 
 | Layer | Technology |
-|-------|-----------|
+|---|---|
 | Orchestration | Apache Airflow 2.x (Docker) |
 | Ingestion | Python + boto3 |
 | Bronze → Silver | AWS Glue (Python Shell) |
-| Silver → Gold | dbt Core — DuckDB (dev) / Redshift Serverless (prod) |
+| Silver → Gold | dbt Core - DuckDB (dev) / Redshift Serverless (prod) |
 | Data Warehouse | AWS Redshift Serverless |
-| Storage | AWS S3 — Bronze / Silver / Gold |
-| Data Quality | Great Expectations + dbt Tests (49/49 PASS) |
-| IaC | Terraform >= 1.5 (Remote State: S3 + DynamoDB) |
-| Secrets | AWS Secrets Manager (boto3) |
-| CI/CD | GitHub Actions (`ci.yml`) |
-| Monitoring | AWS CloudWatch + SNS Alerting |
-| Visualization | Power BI Desktop (ODBC → Redshift) |
+| Storage | AWS S3 - Medallion Architecture |
+| Data Quality | Great Expectations + dbt Tests + dbt-expectations |
+| IaC | Terraform >= 1.5 |
+| CI/CD | GitHub Actions |
+| Visualization | Power BI Desktop (ODBC) |
+| Lineage | OpenLineage + Marquez |
 | Language | Python 3.11, SQL |
 
 ---
 
-## Pipeline Flow
+## Business Questions & KPIs
 
-```
-1. upload_bronze       — 9 CSV files parallel → S3 Bronze
-2. check_volume_anomaly — Row count vs. baseline (threshold 70%) → SNS alert on anomaly
-3. validate_bronze     — Great Expectations: PK not-null/unique, row count per table
-4. start_glue_job      — AWS Glue: Bronze CSV → Silver Parquet
-5. wait_for_silver     — S3KeySensor: waits until Silver Parquet appears
-6. trigger_silver_to_gold — dbt run + dbt test on DuckDB/Redshift (49 tests)
-```
+| # | Question | KPI |
+|---|---|---|
+| BQ-01 | Which product categories generate the most revenue? | Revenue per category, MoM growth |
+| BQ-02 | Which regions and markets perform best? | Revenue per state, order density |
+| BQ-03 | How long does delivery take - where are the delays? | Avg. delivery days, late delivery rate % |
+| BQ-04 | How satisfied are customers and what drives reviews? | Avg. review score, delay/rating correlation |
 
 ---
 
-## dbt Models (17 total, 49 tests — all PASS)
+## dbt Models
 
-| Layer | Models | Materialization |
-|-------|--------|----------------|
-| Staging (`stg_`) | 8 | view |
-| Intermediate (`int_`) | 2 | ephemeral |
-| Marts (`fct_` / `dim_` / `kpi_`) | 7 | table |
+```
+models/
+├── staging/          (8 models)   stg_orders, stg_customers, stg_order_items,
+│                                  stg_order_payments, stg_order_reviews,
+│                                  stg_products, stg_sellers, stg_geolocation
+├── intermediate/     (3 models)   int_orders_enriched, int_delivery_times,
+│                                  int_orders_complete
+├── marts/            (5 models)   fct_sales, fct_regional_performance,
+│                                  fct_delivery, fct_reviews, fct_company_performance
+└── utils/            (1 model)    metricflow_time_spine
+```
 
-Tests per model: `not_null` + `unique` on PKs, `relationships` on FKs.
+All 49 dbt tests pass. Semantic Layer (MetricFlow) integrated for metric definitions.
 
 ---
 
 ## Data Model
 
-```mermaid
-erDiagram
-    stg_orders ||--o{ stg_order_items : "order_id"
-    stg_orders ||--|| stg_customers : "customer_id"
-    stg_order_items ||--|| stg_products : "product_id"
-    stg_order_items ||--|| stg_sellers : "seller_id"
-    stg_orders ||--o{ stg_order_reviews : "order_id"
-    stg_orders ||--o{ stg_order_payments : "order_id"
 ```
-
----
-
-## Screenshots
-
-> Power BI Dashboard — 4 pages, 6 KPIs
-
-<!-- Replace placeholders with actual screenshots -->
-| Page | Preview |
-|------|---------|
-| BQ-01 Revenue by Category | *(screenshot)* |
-| BQ-02 Revenue by Region | *(screenshot)* |
-| BQ-03 Delivery Performance | *(screenshot)* |
-| BQ-04 Customer Satisfaction | *(screenshot)* |
+stg_orders ──────┬──── stg_customers     (customer_id)
+                 ├──── stg_order_items   (order_id)
+                 │         ├──── stg_products   (product_id)
+                 │         └──── stg_sellers    (seller_id)
+                 ├──── stg_order_reviews  (order_id)
+                 └──── stg_order_payments (order_id)
+```
 
 ---
 
@@ -133,129 +123,108 @@ erDiagram
 
 ```
 ecomm_pipeline/
-├── .github/
-│   └── workflows/
-│       ├── ci.yml                          # dbt run + dbt test on push/PR to main
-│       └── dbt_pipeline.yml                # Full pipeline run
 ├── airflow/
-│   └── dags/
-│       ├── olist_bronze_upload.py          # CSV → S3 + validation + Glue trigger
-│       └── olist_silver_to_gold.py         # dbt run + dbt test (Redshift)
-├── ci/
-│   └── run_dbt_ci.sh                       # Local CI check script
+│   ├── dags/
+│   │   ├── olist_bronze_upload.py      # Upload → Volume Check → Bronze Validation → Glue
+│   │   └── olist_silver_to_gold.py     # Silver Validation → dbt run → dbt test
+│   └── docker-compose.yml
 ├── glue/
 │   └── jobs/
-│       └── bronze_to_silver.py             # S3 Bronze CSV → S3 Silver Parquet
+│       └── bronze_to_silver.py         # S3 Bronze → S3 Silver (Parquet)
 ├── dbt/
-│   ├── models/
-│   │   ├── staging/                        # 8x stg_* models
-│   │   ├── intermediate/                   # int_orders_enriched, int_delivery_times
-│   │   └── marts/                          # fct_sales, fct_regional_performance,
-│   │                                       # fct_delivery, fct_reviews, dim_*, kpi_*
-│   └── profiles.yml                        # DuckDB (dev) + Redshift (prod)
+│   ├── models/                         # 17 models across 4 layers
+│   ├── macros/
+│   │   └── mask_pii.sql                # GDPR: PII pseudonymization
+│   └── snapshots/
+│       └── orders_snapshot.sql         # SCD Type 2 order status history
 ├── great_expectations/
-│   ├── validate_bronze.py                  # Bronze CSV validation (9 tables)
-│   └── validate_silver.py                  # Silver Parquet validation (5 tables)
+│   ├── validate_bronze.py              # 9 tables, PK + row count checks
+│   └── validate_silver.py              # 49 checks on Silver layer
 ├── terraform/
-│   └── modules/                            # S3, IAM, Glue, Redshift, Monitoring
-├── notebooks/
-│   └── 01_eda.ipynb                        # Exploratory Data Analysis
-└── RUNBOOK.md                              # Incident response procedures
+│   ├── main.tf                         # Remote state S3 + DynamoDB locking
+│   └── modules/                        # s3, iam, glue, redshift, monitoring
+├── .github/
+│   └── workflows/
+│       └── ci.yml                      # dbt test on every push to main
+└── scripts/
+    ├── airbyte_deploy.py
+    └── run_dbt_with_lineage.py         # OpenLineage integration
 ```
 
 ---
 
-## Local Setup
+## Setup
 
 ### Prerequisites
 
 - Python 3.11
-- Docker Desktop (for Airflow)
-- AWS account with S3, Glue, IAM, Redshift configured
-- Terraform >= 1.5
+- Docker Desktop
+- AWS account (S3, Glue, Redshift Serverless, IAM, Secrets Manager configured via Terraform)
 
-### 1 — Clone and create virtual environment
-
-```bash
-git clone https://github.com/Omexes/ecomm_pipeline.git
-cd ecomm_pipeline
-
-python -m venv .venv
-.venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # Linux/Mac
-
-pip install dbt-core dbt-duckdb great-expectations boto3 pandas pyarrow
-```
-
-### 2 — Configure AWS credentials
-
-```bash
-cp .env.example .env
-# Fill in AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_DEFAULT_REGION, S3_BUCKET
-```
-
-Load credentials in PowerShell:
-
-```powershell
-Get-Content .env | Where-Object { $_ -match '=' -and $_ -notmatch '^#' } |
-  ForEach-Object { $p = $_ -split '=', 2; [System.Environment]::SetEnvironmentVariable($p[0], $p[1]) }
-```
-
-### 3 — Run dbt locally (DuckDB dev target)
-
-```bash
-cd dbt
-dbt deps                          # Install packages
-dbt run --target dev              # Build all 17 models
-dbt test --target dev             # Run all 49 tests
-dbt docs generate && dbt docs serve   # Browse documentation
-```
-
-### 4 — GitHub Actions CI — required secrets
-
-In your GitHub repository under **Settings → Secrets → Actions**, add:
-
-| Secret | Value |
-|--------|-------|
-| `AWS_ACCESS_KEY_ID` | Your AWS access key |
-| `AWS_SECRET_ACCESS_KEY` | Your AWS secret key |
-| `AWS_DEFAULT_REGION` | `eu-central-1` |
-
-The `ci.yml` workflow runs `dbt run + dbt test` on every push and PR to `main`.
-
----
-
-## Infrastructure (Terraform)
-
-All AWS resources are defined as code. No manual console steps.
+### Infrastructure
 
 ```bash
 cd terraform
 terraform init
-terraform plan    # Review changes
-terraform apply   # Confirm with 'yes'
+terraform plan
+terraform apply
 ```
 
-Resources managed: S3 buckets (Bronze/Silver/Gold + CRR), IAM roles (Glue + Airflow), AWS Glue job, Redshift Serverless workgroup, Secrets Manager, CloudWatch alarms + SNS.
+### Local Development
+
+```bash
+git clone https://github.com/ManassehOmexes/olist-analytics-pipeline.git
+cd ecomm_pipeline
+
+python -m venv .venv
+.venv\Scripts\activate       # Windows
+# source .venv/bin/activate  # Linux/Mac
+
+pip install dbt-duckdb great-expectations boto3 pandas pyarrow
+
+cp .env.example .env
+# Fill AWS credentials in .env
+```
+
+### Run the Pipeline
+
+```bash
+# PowerShell: load environment variables
+Get-Content .env | Where-Object { $_ -match '=' -and $_ -notmatch '^#' } |
+  ForEach-Object { $parts = $_ -split '=', 2; [System.Environment]::SetEnvironmentVariable($parts[0], $parts[1]) }
+
+# Start Airflow locally
+cd airflow && docker-compose up -d
+
+# dbt (local, DuckDB)
+cd dbt
+dbt run --target dev
+dbt test --target dev
+dbt docs generate && dbt docs serve
+```
 
 ---
 
-## Monitoring & Recovery
+## Dashboard
 
-| Scenario | Recovery |
-|----------|----------|
-| Volume anomaly detected | SNS email alert — check source data, re-upload CSVs |
-| Bronze GE validation fails | Fix source data — Bronze is immutable, re-upload safely |
-| Glue job fails | Re-trigger DAG from `start_glue_job` in Airflow UI |
-| dbt test fails | Check `dbt/target/run_results.json`, fix upstream, `dbt run --select <model>` |
-| S3 data corrupted | S3 Versioning enabled — restore previous version via CLI |
+<img width="742" height="418" alt="Unternhemensperformance" src="https://github.com/user-attachments/assets/3318892f-8882-4338-8680-170a6fe1a7b5" />
+<img width="734" height="416" alt="Sales" src="https://github.com/user-attachments/assets/f0dfe361-94fe-4bee-8a63-1a59f07436d2" />
+<img width="747" height="416" alt="Regionen" src="https://github.com/user-attachments/assets/cefc5362-c99f-4d20-9380-9ff063a7bcb2" />
+<img width="751" height="417" alt="Lieferung" src="https://github.com/user-attachments/assets/49c22ae7-aa38-47c3-a522-a9cd5de79823" />
+<img width="747" height="419" alt="Bewertungen" src="https://github.com/user-attachments/assets/da7c8401-367a-44e9-8932-8efaef65ebca" />
 
-CloudWatch alarm fires within 5 minutes of Glue failure → SNS email notification.
+<!-- Add screenshots here -->
+| Page | Business Question |
+|---|---|
+| Revenue Overview | BQ-01: Revenue by category and product |
+| Regional Performance | BQ-02: Revenue and order volume by state |
+| Delivery Analysis | BQ-03: Delivery time, late rate, bottlenecks |
+| Customer Satisfaction | BQ-04: Review score distribution, delay correlation |
 
 ---
 
 ## Dataset
 
-[Olist Brazilian E-Commerce Dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) — Kaggle, CC BY-NC-SA 4.0
+[Olist Brazilian E-Commerce Dataset](https://www.kaggle.com/datasets/olistbr/brazilian-ecommerce) - Kaggle, CC BY-NC-SA 4.0
 
-~100,000 orders from 2016–2018 across multiple Brazilian marketplaces. 9 source tables.
+~100,000 orders from 2016 to 2018 across multiple Brazilian marketplaces. 9 source tables.
