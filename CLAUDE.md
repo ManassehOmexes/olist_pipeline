@@ -105,7 +105,7 @@ CRISP-DM Phase 5 (Deployment / DataOps) aktiv. Phase 6 (Übergabe) ausstehend.
 - [x] Volume Anomaly Alert: Row-Count Vergleich nach Upload, SNS bei >30% Abweichung
 - [x] GitHub Actions CI/CD: ci.yml + ci/run_dbt_ci.sh — dbt test bei jedem Push auf main
 - [x] README.md vollständig: Architekturdiagramm, Screenshots, Setup-Anleitung
-- [ ] Case Study PDF: Problem → Architektur → Ergebnis → Metriken (1 Seite)
+- [x] Case Study PDF: Problem → Architektur → Ergebnis → Metriken (1 Seite)
 
 **Geplant — Stufe C (später)**
 
