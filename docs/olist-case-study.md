@@ -47,4 +47,4 @@ IaC: Terraform. Orchestration: Apache Airflow. Lineage: OpenLineage + Marquez.
 
 ---
 
-**GitHub:** [github.com/ManassehOmexes/olist-analytics-pipeline](https://github.com/ManassehOmexes/olist-analytics-pipeline) | **Manasseh - Omexes, D2C Data Engineering Consultant**
+**GitHub:** [github.com/ManassehOmexes/olist-analytics-pipeline](https://github.com/ManassehOmexes/olist_pipeline) | **Manasseh - Omexes, D2C Data Engineering Consultant**
