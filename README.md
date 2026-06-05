@@ -4,7 +4,7 @@ E-commerce companies often struggle to answer fundamental business questions bec
 
 This project demonstrates how a modern analytics platform can automatically transform raw operational data into reliable business insights.
 
-[![CI](https://github.com/ManassehOmexes/olist-analytics-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/ManassehOmexes/olist-analytics-pipeline/actions)
+[![CI](https://github.com/ManassehOmexes/olist-analytics-pipeline/actions/workflows/ci.yml/badge.svg)](https://github.com/ManassehOmexes/olist-pipeline/actions)
 [![dbt](https://img.shields.io/badge/dbt-17%20models%20%7C%2049%20tests-FF694B?style=flat&logo=dbt&logoColor=white)](https://docs.getdbt.com)
 [![AWS](https://img.shields.io/badge/AWS-Redshift%20%7C%20S3%20%7C%20Glue-FF9900?style=flat&logo=amazon-aws&logoColor=white)](https://aws.amazon.com)
 [![Terraform](https://img.shields.io/badge/IaC-Terraform-5835CC?style=flat&logo=terraform&logoColor=white)](https://www.terraform.io)
