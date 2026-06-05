@@ -1,15 +1,15 @@
 version: 2
 
-# Semantic Layer — alle 6 KPIs auf Basis von int_orders_complete.
-# Grain: eine Zeile pro Order-Item (nur delivered orders).
-# Zeit-Dimension: order_purchase_timestamp (DAY) — Pflichtanforderung MetricFlow.
+# Semantic Layer — all 6 KPIs based on int_orders_complete.
+# Grain: one row per order item (delivered orders only).
+# Time dimension: order_purchase_timestamp (DAY) — required by MetricFlow.
 
 semantic_models:
   - name: orders_grain
     description: >
-      Grain-level order facts: eine Zeile pro Order-Item.
-      Basis für alle 6 KPIs der 4 Business Questions.
-      Nur abgeschlossene (delivered) Bestellungen.
+      Grain-level order facts: one row per order item.
+      Basis for all 6 KPIs across 4 Business Questions.
+      Delivered orders only.
     model: ref('int_orders_complete')
 
     defaults:
@@ -26,110 +26,110 @@ semantic_models:
     dimensions:
       - name: order_purchase_timestamp
         type: time
-        description: "Kaufdatum (Bestellzeitpunkt)"
+        description: "Purchase date (order timestamp)"
         type_params:
           time_granularity: day
 
       - name: category
         type: categorical
-        description: "Produktkategorie (englisch)"
+        description: "Product category (English)"
         expr: category
 
       - name: customer_state
         type: categorical
-        description: "Brasilianischer Bundesstaat des Kunden (ISO-Code)"
+        description: "Brazilian customer state (ISO code)"
         expr: customer_state
 
       - name: review_score
         type: categorical
-        description: "Kundenbewertung 1 (schlecht) bis 5 (sehr gut)"
+        description: "Customer review score 1 (poor) to 5 (excellent)"
         expr: review_score
 
     measures:
-      # KPI-01 + KPI-02: Umsatz
+      # KPI-01 + KPI-02: Revenue
       - name: total_revenue
-        description: "Artikelpreis (ohne Versandkosten)"
+        description: "Item price (excl. shipping)"
         agg: sum
         expr: price
         agg_time_dimension: order_purchase_timestamp
 
-      # Anzahl Bestellungen (für Verhältnismetriken)
+      # Order count (for ratio metrics)
       - name: order_count
-        description: "Anzahl eindeutiger Bestellungen"
+        description: "Number of distinct orders"
         agg: count_distinct
         expr: order_id
         agg_time_dimension: order_purchase_timestamp
 
-      # KPI-03: Ø Lieferdauer
+      # KPI-03: Avg. delivery time
       - name: avg_delivery_days
-        description: "Lieferdauer in Tagen (Kaufdatum → Lieferdatum)"
+        description: "Delivery time in days (purchase date → delivery date)"
         agg: average
         expr: delivery_days
         agg_time_dimension: order_purchase_timestamp
 
-      # KPI-04: Anteil verspäteter Lieferungen
+      # KPI-04: Late delivery rate
       - name: late_orders
-        description: "Anzahl verspäteter Lieferungen (is_late_flag = 1)"
+        description: "Number of late deliveries (is_late_flag = 1)"
         agg: sum
         expr: is_late_flag
         agg_time_dimension: order_purchase_timestamp
 
-      # KPI-05 + KPI-06: Bewertungsscore
+      # KPI-05 + KPI-06: Review score
       - name: avg_review_score
-        description: "Kundenbewertungsscore (1–5)"
+        description: "Customer review score (1–5)"
         agg: average
         expr: review_score
         agg_time_dimension: order_purchase_timestamp
 
 metrics:
-  # KPI-01: Umsatz pro Kategorie (BQ-01)
+  # KPI-01: Revenue per category (BQ-01)
   - name: revenue_by_category
-    label: "Umsatz pro Kategorie"
-    description: "KPI-01: Gesamtumsatz — nach Kategorie gruppieren: --group-by category"
+    label: "Revenue per category"
+    description: "KPI-01: Total revenue — group by category: --group-by category"
     type: simple
     type_params:
       measure:
         name: total_revenue
 
-  # KPI-02: Umsatz pro Region (BQ-02)
+  # KPI-02: Revenue per region (BQ-02)
   - name: revenue_by_region
-    label: "Umsatz pro Region"
-    description: "KPI-02: Gesamtumsatz — nach Region gruppieren: --group-by customer_state"
+    label: "Revenue per region"
+    description: "KPI-02: Total revenue — group by region: --group-by customer_state"
     type: simple
     type_params:
       measure:
         name: total_revenue
 
-  # KPI-03: Ø Lieferdauer (BQ-03)
+  # KPI-03: Avg. delivery time (BQ-03)
   - name: avg_delivery_duration
-    label: "Ø Lieferdauer (Tage)"
-    description: "KPI-03: Durchschnittliche Lieferdauer — nach customer_state gruppierbar"
+    label: "Avg. delivery time (days)"
+    description: "KPI-03: Average delivery time — can be grouped by customer_state"
     type: simple
     type_params:
       measure:
         name: avg_delivery_days
 
-  # Basis-Metriken für Ratio-Berechnung (KPI-04 + KPI-06)
+  # Base metrics for ratio calculation (KPI-04 + KPI-06)
   - name: total_late_orders
-    label: "Anzahl verspäteter Lieferungen"
-    description: "Basis-Metrik für Ratio: Anzahl verspäteter Lieferungen"
+    label: "Number of late deliveries"
+    description: "Base metric for ratio: number of late deliveries"
     type: simple
     type_params:
       measure:
         name: late_orders
 
   - name: total_order_count
-    label: "Anzahl Bestellungen"
-    description: "Basis-Metrik für Ratio: Eindeutige Bestellungen"
+    label: "Order count"
+    description: "Base metric for ratio: distinct orders"
     type: simple
     type_params:
       measure:
         name: order_count
 
-  # KPI-04: Anteil verspäteter Lieferungen (BQ-03)
+  # KPI-04: Late delivery rate (BQ-03)
   - name: late_delivery_rate
-    label: "Anteil verspäteter Lieferungen"
-    description: "KPI-04: Verspätete / Gesamtbestellungen — nach customer_state gruppierbar"
+    label: "Late delivery rate"
+    description: "KPI-04: Late / total orders — can be grouped by customer_state"
     type: ratio
     type_params:
       numerator:
@@ -137,20 +137,20 @@ metrics:
       denominator:
         name: total_order_count
 
-  # KPI-05: Ø Bewertungsscore (BQ-04)
+  # KPI-05: Avg. review score (BQ-04)
   - name: avg_customer_review_score
-    label: "Ø Kundenbewertungsscore"
-    description: "KPI-05: Durchschnittlicher Bewertungsscore (1–5) — nach Region oder Zeitraum"
+    label: "Avg. customer review score"
+    description: "KPI-05: Average review score (1–5) — groupable by region or time period"
     type: simple
     type_params:
       measure:
         name: avg_review_score
 
-  # KPI-06: Korrelation Verzögerung / Bewertung (BQ-04)
-  # Abfrage: mf query --metrics avg_delivery_duration,avg_customer_review_score --group-by review_score
+  # KPI-06: Delay/review correlation (BQ-04)
+  # Query: mf query --metrics avg_delivery_duration,avg_customer_review_score --group-by review_score
   - name: late_rate_by_score
-    label: "Verspätungsrate nach Bewertungsscore"
-    description: "KPI-06: Verspätungsrate je Score — zeigt Korrelation zwischen Verzögerung und Kundenzufriedenheit"
+    label: "Late delivery rate by review score"
+    description: "KPI-06: Late rate by score — shows correlation between delays and customer satisfaction"
     type: ratio
     type_params:
       numerator:

@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: fct_sales
-    description: "Umsatz und Bestellvolumen je Produktkategorie (BQ-01)"
+    description: "Revenue and order volume per product category (BQ-01)"
     columns:
       - name: category
         tests:
@@ -12,7 +12,7 @@ models:
           - not_null
 
   - name: fct_regional_performance
-    description: "Umsatz und Bewertungen je Bundesstaat (BQ-02)"
+    description: "Revenue and reviews per state (BQ-02)"
     columns:
       - name: state
         tests:
@@ -23,7 +23,7 @@ models:
           - not_null
 
   - name: fct_delivery
-    description: "Ø Lieferdauer und Verspätungsrate je Bundesstaat (BQ-03)"
+    description: "Avg. delivery time and late delivery rate per state (BQ-03)"
     columns:
       - name: state
         tests:
@@ -37,7 +37,7 @@ models:
           - not_null
 
   - name: fct_reviews
-    description: "Bewertungsscores mit Lieferdauer-Korrelation (BQ-04)"
+    description: "Review scores with delivery time correlation (BQ-04)"
     columns:
       - name: review_score
         tests:
@@ -46,9 +46,9 @@ models:
 
   - name: fct_company_performance
     description: >
-      Unternehmensperformance auf Bestellpositions-Ebene (Grain: order_item).
-      Kombiniert Umsatz, Bundesstaat, Kategorie und Review-Score in einer Tabelle.
-      Power BI kann damit alle KPI-Karten und Charts gleichzeitig bedienen.
+      Company performance at order-item grain.
+      Combines revenue, state, category and review score in one table.
+      Serves all KPI cards and charts in Power BI simultaneously.
     columns:
       - name: order_item_pk
         tests:

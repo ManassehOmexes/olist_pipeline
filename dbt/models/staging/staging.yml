@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: stg_orders
-    description: "Bereinigte Bestellungen aus dem Silver Layer"
+    description: "Cleaned orders from Silver layer"
     columns:
       - name: order_id
         tests:
@@ -16,7 +16,7 @@ models:
           - not_null
 
   - name: stg_customers
-    description: "Kunden mit PLZ und Bundesstaat"
+    description: "Customers with zip code and state"
     columns:
       - name: customer_id
         tests:
@@ -27,7 +27,7 @@ models:
           - not_null
 
   - name: stg_order_items
-    description: "Einzelne Bestellpositionen mit Preis und Versandkosten"
+    description: "Individual order line items with price and shipping cost"
     columns:
       - name: order_id
         tests:
@@ -48,7 +48,7 @@ models:
           - not_null
 
   - name: stg_products
-    description: "Produkte mit Kategorie (inkl. englischer Übersetzung)"
+    description: "Products with category (incl. English translation)"
     columns:
       - name: product_id
         tests:
@@ -56,7 +56,7 @@ models:
           - unique
 
   - name: stg_sellers
-    description: "Verkäufer mit PLZ und Bundesstaat"
+    description: "Sellers with zip code and state"
     columns:
       - name: seller_id
         tests:
@@ -64,7 +64,7 @@ models:
           - unique
 
   - name: stg_order_reviews
-    description: "Kundenbewertungen je Bestellung"
+    description: "Customer reviews per order"
     columns:
       - name: review_id
         tests:
@@ -75,14 +75,14 @@ models:
           - not_null
 
   - name: stg_order_payments
-    description: "Zahlungsdaten je Bestellung"
+    description: "Payment data per order"
     columns:
       - name: order_id
         tests:
           - not_null
 
   - name: stg_geolocation
-    description: "PLZ → Koordinaten (auf Median aggregiert)"
+    description: "Zip code → coordinates (aggregated to median)"
     columns:
       - name: zip_code_prefix
         tests:

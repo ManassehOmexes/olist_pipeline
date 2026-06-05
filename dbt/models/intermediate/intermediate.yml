@@ -2,7 +2,7 @@ version: 2
 
 models:
   - name: int_orders_enriched
-    description: "Bestellungen angereichert mit Kundendaten (State, PLZ)"
+    description: "Orders enriched with customer data (state, zip code)"
     columns:
       - name: order_id
         tests:
@@ -20,7 +20,7 @@ models:
           - not_null
 
   - name: int_delivery_times
-    description: "Lieferdauer und Verspätungsstatus je Bestellung"
+    description: "Delivery time and delay status per order"
     columns:
       - name: order_id
         tests:

@@ -28,7 +28,7 @@ def get_redshift_secret(project: str, environment: str) -> dict:
 
 
 def read_csv_from_s3(bucket: str, table_name: str) -> pd.DataFrame:
-    """Liest eine CSV Datei aus dem Bronze Layer via boto3."""
+    """Reads a CSV file from the Bronze layer via boto3."""
     import io
     key = f"bronze/{table_name}/{table_name}.csv"
     s3_client = boto3.client('s3')
@@ -37,7 +37,7 @@ def read_csv_from_s3(bucket: str, table_name: str) -> pd.DataFrame:
 
 
 def write_parquet_to_s3(df: pd.DataFrame, bucket: str, table_name: str) -> None:
-    """Schreibt einen DataFrame als Parquet in den Silver Layer via boto3."""
+    """Writes a DataFrame as Parquet to the Silver layer via boto3."""
     import io
     key = f"silver/{table_name}/{table_name}.parquet"
     buffer = io.BytesIO()
@@ -45,7 +45,7 @@ def write_parquet_to_s3(df: pd.DataFrame, bucket: str, table_name: str) -> None:
     buffer.seek(0)
     s3_client = boto3.client('s3')
     s3_client.put_object(Bucket=bucket, Key=key, Body=buffer.getvalue())
-    log.info("Geschrieben: s3://%s/%s (%d Zeilen)", bucket, key, len(df))
+    log.info("Written: s3://%s/%s (%d rows)", bucket, key, len(df))
 
 
 def transform_orders(df: pd.DataFrame) -> pd.DataFrame:
@@ -83,7 +83,7 @@ def transform_reviews(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def transform_default(df: pd.DataFrame) -> pd.DataFrame:
-    """Tabellen ohne spezifische Transformation."""
+    """Tables without specific transformation."""
     return df
 
 
@@ -101,16 +101,16 @@ TABLES = {
 
 
 if __name__ == '__main__':
-    log.info("Glue Job gestartet: %s", datetime.now())
+    log.info("Glue job started: %s", datetime.now())
 
     for table_name, transform_fn in TABLES.items():
         try:
-            log.info("Verarbeite: %s", table_name)
+            log.info("Processing: %s", table_name)
             df = read_csv_from_s3(SOURCE_BUCKET, table_name)
             df = transform_fn(df)
             write_parquet_to_s3(df, TARGET_BUCKET, table_name)
         except Exception as e:
-            log.error("Fehler bei %s: %s", table_name, e)
+            log.error("Error processing %s: %s", table_name, e)
             raise
 
-    log.info("Glue Job abgeschlossen: %s", datetime.now())
+    log.info("Glue job completed: %s", datetime.now())

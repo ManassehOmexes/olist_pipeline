@@ -5,8 +5,8 @@ exposures:
     type: dashboard
     maturity: high
     description: >
-      Power BI Dashboard mit 4 Seiten zu den Business Questions.
-      Datenquelle: Gold Layer Mart-Tabellen, exportiert als CSV via scripts/export_to_csv.py.
+      Power BI Dashboard with 4 pages covering the Business Questions.
+      Data source: Gold layer mart tables, connected via ODBC to Redshift.
 
     depends_on:
       - ref('fct_sales')

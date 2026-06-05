@@ -3,7 +3,7 @@ version: 2
 sources:
   - name: silver
     schema: silver
-    description: "Silver Layer - gereinigte Parquet-Daten aus S3 via Redshift Spectrum"
+    description: "Silver layer — cleaned Parquet data from S3 via Redshift Spectrum"
     tables:
       - name: olist_customers_dataset
       - name: olist_orders_dataset

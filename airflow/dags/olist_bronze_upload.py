@@ -48,9 +48,9 @@ VOLUME_THRESHOLD = 0.70
 
 
 def upload_to_s3(file_name: str, **context) -> str:
-    """Lädt eine CSV Datei in den S3 Bronze Layer hoch.
+    """Uploads a CSV file to the S3 Bronze layer.
 
-    Gibt den S3-Key zurück — wird via XCom gespeichert.
+    Returns the S3 key — stored via XCom.
     """
     bucket = os.environ['S3_BUCKET']
     region = os.environ['AWS_DEFAULT_REGION']
@@ -64,9 +64,9 @@ def upload_to_s3(file_name: str, **context) -> str:
             Bucket=bucket,
             Key=s3_key,
         )
-        log.info("Hochgeladen: %s → s3://%s/%s", local_path, bucket, s3_key)
+        log.info("Uploaded: %s → s3://%s/%s", local_path, bucket, s3_key)
     except Exception as e:
-        log.error("Upload fehlgeschlagen für %s: %s", file_name, e)
+        log.error("Upload failed for %s: %s", file_name, e)
         raise
 
     context['ti'].xcom_push(key='s3_key', value=s3_key)
@@ -74,7 +74,7 @@ def upload_to_s3(file_name: str, **context) -> str:
 
 
 def check_volume_anomaly(**context) -> None:
-    """Vergleicht CSV-Zeilenzahlen mit Baseline. Sendet SNS-Alert und wirft Exception bei Anomalie."""
+    """Compares CSV row counts against baseline. Sends SNS alert and raises exception on anomaly."""
     region = os.environ['AWS_DEFAULT_REGION']
     topic_arn = os.environ.get(
         'SNS_TOPIC_ARN',
@@ -89,10 +89,10 @@ def check_volume_anomaly(**context) -> None:
 
         try:
             with open(local_path, 'r', encoding='utf-8') as f:
-                row_count = sum(1 for _ in f) - 1  # Header abziehen
+                row_count = sum(1 for _ in f) - 1  # subtract header
         except Exception as e:
-            log.error("Datei nicht lesbar: %s — %s", local_path, e)
-            anomalies.append(f"{table}: Datei nicht lesbar ({e})")
+            log.error("File not readable: %s — %s", local_path, e)
+            anomalies.append(f"{table}: file not readable ({e})")
             continue
 
         ratio = row_count / baseline
@@ -100,13 +100,13 @@ def check_volume_anomaly(**context) -> None:
 
         if ratio < VOLUME_THRESHOLD:
             msg = (
-                f"{table}: erwartet ~{baseline:,}, gefunden {row_count:,} "
-                f"({deviation_pct:.1f}% unter Baseline)"
+                f"{table}: expected ~{baseline:,}, found {row_count:,} "
+                f"({deviation_pct:.1f}% below baseline)"
             )
-            log.warning("ANOMALIE — %s", msg)
+            log.warning("ANOMALY — %s", msg)
             anomalies.append(msg)
         else:
-            log.info("OK — %s: %s Zeilen (%.1f%% der Baseline)", table, f"{row_count:,}", ratio * 100)
+            log.info("OK — %s: %s rows (%.1f%% of baseline)", table, f"{row_count:,}", ratio * 100)
 
     if anomalies:
         summary = "\n".join(anomalies)
@@ -115,14 +115,14 @@ def check_volume_anomaly(**context) -> None:
             sns.publish(
                 TopicArn=topic_arn,
                 Subject='[olist] Bronze Volume Anomaly',
-                Message=f"Volume-Anomalien gefunden:\n\n{summary}",
+                Message=f"Volume anomalies detected:\n\n{summary}",
             )
-            log.info("SNS-Alert gesendet an %s", topic_arn)
+            log.info("SNS alert sent to %s", topic_arn)
         except Exception as e:
-            log.error("SNS-Publish fehlgeschlagen: %s", e)
+            log.error("SNS publish failed: %s", e)
 
         raise RuntimeError(
-            f"Volume Anomaly Check fehlgeschlagen ({len(anomalies)} Tabelle(n)):\n{summary}"
+            f"Volume anomaly check failed ({len(anomalies)} table(s)):\n{summary}"
         )
 
 
@@ -139,16 +139,16 @@ def run_bronze_validation(**context) -> None:
             log.info(result.stdout.strip())
         if result.returncode != 0:
             log.error(result.stderr.strip())
-            raise RuntimeError("Bronze Validation fehlgeschlagen — Glue Job wird nicht gestartet")
+            raise RuntimeError("Bronze validation failed — Glue job will not start")
     except FileNotFoundError:
-        log.error("validate_bronze.py nicht gefunden unter: %s", script)
+        log.error("validate_bronze.py not found at: %s", script)
         raise
 
 
 def trigger_glue_job(**context) -> str:
-    """Startet den Glue Bronze-to-Silver Job.
+    """Starts the Glue Bronze-to-Silver job.
 
-    Gibt die Job-Run-ID zurück — wird via XCom gespeichert.
+    Returns the job run ID — stored via XCom.
     """
     region = os.environ['AWS_DEFAULT_REGION']
     job_name = 'olist-bronze-to-silver-dev'
@@ -163,9 +163,9 @@ def trigger_glue_job(**context) -> str:
             },
         )
         run_id = response['JobRunId']
-        log.info("Glue Job gestartet: %s (Run ID: %s)", job_name, run_id)
+        log.info("Glue job started: %s (run ID: %s)", job_name, run_id)
     except Exception as e:
-        log.error("Glue Job konnte nicht gestartet werden: %s", e)
+        log.error("Failed to start Glue job: %s", e)
         raise
 
     context['ti'].xcom_push(key='glue_run_id', value=run_id)
@@ -175,7 +175,7 @@ def trigger_glue_job(**context) -> str:
 with DAG(
     dag_id='olist_bronze_upload',
     default_args=default_args,
-    description='Lädt Olist CSV Rohdaten nach S3 Bronze Layer und startet Glue Job',
+    description='Uploads Olist CSV raw data to S3 Bronze layer and triggers Glue job',
     schedule_interval='@once',
     start_date=datetime(2024, 1, 1),
     catchup=False,
@@ -183,16 +183,16 @@ with DAG(
     doc_md="""
     ## olist_bronze_upload
 
-    1. TaskGroup upload_bronze: Alle 9 CSV Dateien parallel nach S3 Bronze hochladen
-       - XCom: s3_key pro Datei gespeichert
-    2. check_volume_anomaly: Zeilenzahl aller CSVs gegen Baseline prüfen (Schwellwert 70%)
-       - Anomalie → SNS-Alert + Abbruch vor GE-Validierung
-    3. validate_bronze: Great Expectations prüft alle CSVs auf S3 (Struktur, PK, Row Count)
-       - Schlägt fehl → Glue wird nicht gestartet
-    4. start_glue_job: Glue Job Bronze → Silver triggern
-       - XCom: glue_run_id gespeichert
-    5. wait_for_silver: S3KeySensor wartet bis Silver-Parquet erscheint (reschedule mode)
-    6. trigger_silver_to_gold: DAG olist_silver_to_gold wird gestartet
+    1. TaskGroup upload_bronze: Upload all 9 CSV files to S3 Bronze in parallel
+       - XCom: s3_key stored per file
+    2. check_volume_anomaly: Compare row counts of all CSVs against baseline (threshold 70%)
+       - Anomaly → SNS alert + abort before GE validation
+    3. validate_bronze: Great Expectations checks all CSVs on S3 (schema, PK, row count)
+       - Fails → Glue will not start
+    4. start_glue_job: Trigger Glue job Bronze → Silver
+       - XCom: glue_run_id stored
+    5. wait_for_silver: S3KeySensor waits until Silver Parquet appears (reschedule mode)
+    6. trigger_silver_to_gold: DAG olist_silver_to_gold is triggered
     """,
 ) as dag:
 

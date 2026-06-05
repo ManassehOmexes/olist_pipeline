@@ -34,12 +34,12 @@ def _get_redshift_password() -> str:
 
 
 def validate_silver(**context) -> None:
-    """Führt Great Expectations Silver Validation aus.
+    """Runs Great Expectations Silver validation.
 
-    Schlägt fehl wenn ein Check nicht besteht — dbt startet dann nicht.
+    Fails if any check does not pass — dbt will not start.
     XCom: validation_status = 'passed'
     """
-    log.info("Starte Great Expectations Silver Validation...")
+    log.info("Starting Great Expectations Silver validation...")
 
     try:
         result = subprocess.run(
@@ -52,23 +52,23 @@ def validate_silver(**context) -> None:
 
         if result.returncode != 0:
             log.error(result.stderr)
-            raise RuntimeError('Silver Validation fehlgeschlagen — dbt wird nicht gestartet.')
+            raise RuntimeError('Silver validation failed — dbt will not start.')
 
-        log.info("Silver Validation erfolgreich: alle Checks bestanden.")
+        log.info("Silver validation successful: all checks passed.")
     except Exception as e:
-        log.error("Fehler in validate_silver: %s", e)
+        log.error("Error in validate_silver: %s", e)
         raise
 
     context['ti'].xcom_push(key='validation_status', value='passed')
 
 
 def run_dbt(command: str, **context) -> None:
-    """Führt einen dbt Befehl gegen Redshift (prod) aus.
+    """Runs a dbt command against Redshift (prod).
 
-    command: 'run' oder 'test'
+    command: 'run' or 'test'
     XCom: dbt_<command>_status = 'passed'
     """
-    log.info("Starte dbt %s --target prod...", command)
+    log.info("Starting dbt %s --target prod...", command)
 
     try:
         result = subprocess.run(
@@ -79,7 +79,7 @@ def run_dbt(command: str, **context) -> None:
             env={
                 **os.environ,
                 'REDSHIFT_PASSWORD': _get_redshift_password(),
-                # Lineage-Events an Marquez senden (läuft im selben Docker-Netzwerk)
+                # Send lineage events to Marquez (running in same Docker network)
                 'OPENLINEAGE_URL': 'http://marquez:5000',
                 'OPENLINEAGE_NAMESPACE': 'olist-dbt',
             },
@@ -88,11 +88,11 @@ def run_dbt(command: str, **context) -> None:
 
         if result.returncode != 0:
             log.error(result.stderr)
-            raise RuntimeError(f'dbt {command} fehlgeschlagen.')
+            raise RuntimeError(f'dbt {command} failed.')
 
-        log.info("dbt %s erfolgreich abgeschlossen.", command)
+        log.info("dbt %s completed successfully.", command)
     except Exception as e:
-        log.error("Fehler in dbt %s: %s", command, e)
+        log.error("Error in dbt %s: %s", command, e)
         raise
 
     context['ti'].xcom_push(key=f'dbt_{command}_status', value='passed')
@@ -101,7 +101,7 @@ def run_dbt(command: str, **context) -> None:
 with DAG(
     dag_id='olist_silver_to_gold',
     default_args=default_args,
-    description='Validiert Silver Layer (GE) und baut Gold Layer (dbt gegen Redshift)',
+    description='Validates Silver layer (GE) and builds Gold layer (dbt against Redshift)',
     schedule_interval=None,
     start_date=datetime(2024, 1, 1),
     catchup=False,
@@ -109,23 +109,23 @@ with DAG(
     doc_md="""
     ## olist_silver_to_gold
 
-    Wird von olist_bronze_upload getriggert nachdem Silver-Dateien in S3 vorliegen.
+    Triggered by olist_bronze_upload once Silver files are available in S3.
 
-    1. wait_for_silver_orders: S3KeySensor bestätigt Silver-Daten (reschedule mode)
-    2. validate_silver: Great Expectations prüft 42 Checks auf Silver Layer
+    1. wait_for_silver_orders: S3KeySensor confirms Silver data (reschedule mode)
+    2. validate_silver: Great Expectations runs 42 checks on Silver layer
        - XCom: validation_status = 'passed'
     3. TaskGroup dbt_gold:
-       - dbt_run: baut 14 Modelle in Redshift
+       - dbt_run: builds 14 models in Redshift
          - XCom: dbt_run_status = 'passed'
-       - dbt_test: führt 42 Tests aus
+       - dbt_test: runs 42 tests
          - XCom: dbt_test_status = 'passed'
 
-    Power BI verbindet sich direkt per ODBC mit Redshift — kein CSV Export nötig.
+    Power BI connects directly via ODBC to Redshift — no CSV export required.
     """,
 ) as dag:
 
-    # Sensor: sicherstellt dass Silver-Daten wirklich vorhanden sind
-    # bevor GE und dbt starten (defensiv, da DAG extern getriggert wird)
+    # Sensor: ensures Silver data is actually present before GE and dbt start
+    # (defensive check, since this DAG is triggered externally)
     wait_for_silver_orders = S3KeySensor(
         task_id='wait_for_silver_orders',
         bucket_name=os.environ.get('S3_BUCKET', 'olist-data-lake-dev'),
